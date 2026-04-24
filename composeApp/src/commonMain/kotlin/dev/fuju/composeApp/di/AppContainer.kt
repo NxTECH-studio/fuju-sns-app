@@ -9,6 +9,8 @@ import dev.fuju.core.storage.InMemoryTokenStorage
 import dev.fuju.feature.auth.data.AuthRepository
 import dev.fuju.feature.auth.domain.AuthConfig
 import dev.fuju.feature.auth.domain.AuthStateMachine
+import dev.fuju.feature.timeline.data.TimelineRepositoryImpl
+import dev.fuju.feature.timeline.domain.TimelineRepository
 
 /**
  * 軽量な手書き DI コンテナ。プラットフォームごとの差異（KeyStore 等）は今のところ
@@ -37,7 +39,13 @@ class AppContainer(
     val authRepository = AuthRepository(authHttpClient, tokenStorage, sessionHint)
     val authStateMachine = AuthStateMachine(authRepository, AuthConfig())
 
-    fun asAppDependencies(): AppDependencies = AppDependencies(authStateMachine)
+    val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
+
+    fun asAppDependencies(): AppDependencies =
+        AppDependencies(
+            authStateMachine = authStateMachine,
+            timelineRepository = timelineRepository,
+        )
 
     override fun close() {
         authStateMachine.dispose()
