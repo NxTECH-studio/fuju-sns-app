@@ -1,3 +1,5 @@
+import org.jetbrains.compose.ExperimentalComposeLibrary
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
@@ -31,6 +33,7 @@ kotlin {
         }
         // Roborazzi + Robolectric は Android SDK に依存するので androidUnitTest 限定で依存を入れる。
         // commonTest には入れられない（KMP の iOS ターゲットで解決できないため）。
+        @OptIn(ExperimentalComposeLibrary::class)
         androidUnitTest.dependencies {
             implementation(libs.junit)
             implementation(libs.robolectric)

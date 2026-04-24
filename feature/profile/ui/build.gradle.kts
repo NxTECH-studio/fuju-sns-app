@@ -1,3 +1,5 @@
+import org.jetbrains.compose.ExperimentalComposeLibrary
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
@@ -31,6 +33,7 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+        @OptIn(ExperimentalComposeLibrary::class)
         androidUnitTest.dependencies {
             implementation(libs.junit)
             implementation(libs.robolectric)
