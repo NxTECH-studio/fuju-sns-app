@@ -40,10 +40,6 @@ class LoginFormScreenshotTest {
         RoborazziRule(
             composeRule = composeTestRule,
             captureRoot = composeTestRule.onRoot(),
-            options =
-                RoborazziRule.Options(
-                    outputDirectoryPath = "src/androidUnitTest/roborazzi",
-                ),
         )
 
     @Test
@@ -60,7 +56,7 @@ class LoginFormScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/LoginForm_initial.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/LoginForm_initial.png")
     }
 
     @Test
@@ -77,7 +73,7 @@ class LoginFormScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/LoginForm_withoutProviders.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/LoginForm_withoutProviders.png")
     }
 }
 
@@ -107,3 +103,6 @@ private fun ScreenshotScaffold(content: @Composable () -> Unit) {
 
 /** Robolectric で使う Android SDK level。 */
 private const val SCREENSHOT_SDK: Int = 34
+
+/** baseline PNG の出力先ディレクトリ（module からの相対パス）。 */
+private const val BASELINE_DIR: String = "src/androidUnitTest/roborazzi"

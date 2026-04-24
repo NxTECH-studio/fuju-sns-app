@@ -48,10 +48,6 @@ class UserProfileScreenshotTest {
         RoborazziRule(
             composeRule = composeTestRule,
             captureRoot = composeTestRule.onRoot(),
-            options =
-                RoborazziRule.Options(
-                    outputDirectoryPath = "src/androidUnitTest/roborazzi",
-                ),
         )
 
     @Test
@@ -74,7 +70,7 @@ class UserProfileScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/ProfileHeader_default.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/ProfileHeader_default.png")
     }
 
     @Test
@@ -91,7 +87,7 @@ class UserProfileScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/FollowButton_notFollowing.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/FollowButton_notFollowing.png")
     }
 
     @Test
@@ -108,7 +104,7 @@ class UserProfileScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/FollowButton_following.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/FollowButton_following.png")
     }
 
     @Test
@@ -126,7 +122,7 @@ class UserProfileScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "src/androidUnitTest/roborazzi/FollowButton_pending.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/FollowButton_pending.png")
     }
 }
 
@@ -152,3 +148,6 @@ private fun PaddedColumn(content: @Composable () -> Unit) {
 
 /** Robolectric で使う Android SDK level。 */
 private const val SCREENSHOT_SDK: Int = 34
+
+/** baseline PNG の出力先ディレクトリ（module からの相対パス）。 */
+private const val BASELINE_DIR: String = "src/androidUnitTest/roborazzi"
