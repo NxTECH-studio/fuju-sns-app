@@ -76,34 +76,41 @@ object OAuthCallbackParser {
             }.toMap()
     }
 
+    /**
+     * `+` → space、`%XX` → byte として accumulate し、最後に UTF-8 として `String` に復号する。
+     * マルチバイト文字（例: `%E3%81%82` = "あ"）を壊さず正しく戻せる。
+     * `%` の後が 16 進 2 桁でない場合はその `%` をそのまま出力（寛容側）。
+     */
     private fun percentDecode(value: String): String {
         if ('%' !in value && '+' !in value) return value
-        val out = StringBuilder(value.length)
+        val bytes = ArrayList<Byte>(value.length)
         var i = 0
         while (i < value.length) {
             val c = value[i]
             when {
                 c == '+' -> {
-                    out.append(' ')
+                    bytes.add(' '.code.toByte())
                     i++
                 }
-                c == '%' && i + 2 < value.length -> {
+                c == '%' && i + 2 <= value.length - 1 -> {
                     val hi = value[i + 1].digitToIntOrNull(16)
                     val lo = value[i + 2].digitToIntOrNull(16)
                     if (hi != null && lo != null) {
-                        out.append(((hi shl 4) or lo).toByte().toInt().toChar())
+                        bytes.add(((hi shl 4) or lo).toByte())
                         i += 3
                     } else {
-                        out.append(c)
+                        bytes.add(c.code.toByte())
                         i++
                     }
                 }
                 else -> {
-                    out.append(c)
+                    // ASCII のみ想定。多バイト char は percent-encoding 経由で来るため、
+                    // ここに来る char は ASCII 範囲に収まる前提。はみ出た char はそのまま byte 化。
+                    bytes.add(c.code.toByte())
                     i++
                 }
             }
         }
-        return out.toString()
+        return bytes.toByteArray().decodeToString()
     }
 }

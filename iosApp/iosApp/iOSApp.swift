@@ -48,6 +48,10 @@ final class IOSAppSession: ObservableObject {
 
     /// Custom URL Scheme `fuju://auth/callback/{provider}?state=...&code=...` を
     /// Kotlin 側の OAuthCallbackParser で解釈し、AuthStateMachine に通知する。
+    ///
+    /// 失敗時は AuthStateMachine 側で status = Unauthenticated + error に遷移するため、
+    /// UI は自動的に再描画される。ここでは万一の未処理例外を押さえるだけで、
+    /// state / code を含みうる error の中身は log に書かない。
     func handleOAuthCallback(url: URL) {
         guard let callback = OAuthCallbackParser.shared.parse(url: url.absoluteString) else {
             return
@@ -61,8 +65,10 @@ final class IOSAppSession: ObservableObject {
                     code: callback.code
                 )
             } catch {
-                // AuthException は Swift から見ると NSError。ログに留める。
-                NSLog("OAuth callback failed: \(error)")
+                // 失敗の詳細は AuthStateMachine の state.error に入るので UI 経由で表示する。
+                // ここで error を文字列化すると state / code を含む description が流出する恐れが
+                // あるため、type の名前だけに留める。
+                NSLog("OAuth callback failed: kind=\(type(of: error))")
             }
         }
     }

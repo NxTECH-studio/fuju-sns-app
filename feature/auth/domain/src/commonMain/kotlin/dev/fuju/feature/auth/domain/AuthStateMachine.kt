@@ -274,19 +274,29 @@ class AuthStateMachine(
         state: String,
         code: String,
     ): User {
-        val res = actions.socialCallback(provider, state, code)
-        accessExpEpochSec = nowEpochSec() + res.expiresInSec
-        actions.storeAccessToken(res.accessToken, accessExpEpochSec!!)
-        val user = actions.loadProfile()
-        update(
-            status = AuthStatus.Authenticated,
-            user = user,
-            error = null,
-            needsPublicIdSetup = actions.isNewSocialUser(user.id),
-        )
-        actions.writeSessionHint(user.id)
-        scheduleSilentRefresh()
-        return user
+        try {
+            val res = actions.socialCallback(provider, state, code)
+            accessExpEpochSec = nowEpochSec() + res.expiresInSec
+            actions.storeAccessToken(res.accessToken, accessExpEpochSec!!)
+            val user = actions.loadProfile()
+            update(
+                status = AuthStatus.Authenticated,
+                user = user,
+                error = null,
+                needsPublicIdSetup = actions.isNewSocialUser(user.id),
+            )
+            actions.writeSessionHint(user.id)
+            scheduleSilentRefresh()
+            return user
+        } catch (e: AuthException) {
+            // 呼び出し側（MainActivity / iOSApp）は fire-and-forget で error を受け取れない
+            // ため、status = Error に遷移させて UI 経由で通知する。
+            update(
+                status = if (_state.value.user != null) AuthStatus.Authenticated else AuthStatus.Unauthenticated,
+                error = e,
+            )
+            throw e
+        }
     }
 
     // --- Internal helpers ---

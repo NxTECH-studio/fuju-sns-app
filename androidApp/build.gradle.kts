@@ -46,37 +46,44 @@ android {
     }
 
     flavorDimensions += "env"
+
+    // flavor ごとのデフォルト URL 群。キー: flavor 名、値: [idSuffix, versionSuffix, apiBaseUrl, authCoreBaseUrl]。
+    // 全て local.properties で 1 括 override できる。socialRedirectUri は全 flavor で同じ。
+    val envFlavors =
+        mapOf(
+            "dev" to listOf(".dev", "-dev", "http://10.0.2.2:8080", "http://10.0.2.2:8081"),
+            "staging" to
+                listOf(
+                    ".staging",
+                    "-staging",
+                    "https://api-staging.fuju.example.com",
+                    "https://auth-staging.fuju.example.com",
+                ),
+            "prod" to listOf("", "", "https://api.fuju.example.com", "https://auth.fuju.example.com"),
+        )
+
     productFlavors {
-        create("dev") {
-            dimension = "env"
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-            val apiBaseUrl = localOrDefault("fuju.apiBaseUrl", "http://10.0.2.2:8080")
-            val authCoreBaseUrl = localOrDefault("fuju.authCoreBaseUrl", "http://10.0.2.2:8081")
-            val socialRedirectUri = localOrDefault("fuju.socialRedirectUri", "fuju://auth/callback")
-            buildConfigField("String", "FUJU_API_BASE_URL", "\"$apiBaseUrl\"")
-            buildConfigField("String", "AUTH_CORE_BASE_URL", "\"$authCoreBaseUrl\"")
-            buildConfigField("String", "SOCIAL_REDIRECT_URI", "\"$socialRedirectUri\"")
-        }
-        create("staging") {
-            dimension = "env"
-            applicationIdSuffix = ".staging"
-            versionNameSuffix = "-staging"
-            val apiBaseUrl = localOrDefault("fuju.apiBaseUrl", "https://api-staging.fuju.example.com")
-            val authCoreBaseUrl = localOrDefault("fuju.authCoreBaseUrl", "https://auth-staging.fuju.example.com")
-            val socialRedirectUri = localOrDefault("fuju.socialRedirectUri", "fuju://auth/callback")
-            buildConfigField("String", "FUJU_API_BASE_URL", "\"$apiBaseUrl\"")
-            buildConfigField("String", "AUTH_CORE_BASE_URL", "\"$authCoreBaseUrl\"")
-            buildConfigField("String", "SOCIAL_REDIRECT_URI", "\"$socialRedirectUri\"")
-        }
-        create("prod") {
-            dimension = "env"
-            val apiBaseUrl = localOrDefault("fuju.apiBaseUrl", "https://api.fuju.example.com")
-            val authCoreBaseUrl = localOrDefault("fuju.authCoreBaseUrl", "https://auth.fuju.example.com")
-            val socialRedirectUri = localOrDefault("fuju.socialRedirectUri", "fuju://auth/callback")
-            buildConfigField("String", "FUJU_API_BASE_URL", "\"$apiBaseUrl\"")
-            buildConfigField("String", "AUTH_CORE_BASE_URL", "\"$authCoreBaseUrl\"")
-            buildConfigField("String", "SOCIAL_REDIRECT_URI", "\"$socialRedirectUri\"")
+        envFlavors.forEach { (flavorName, values) ->
+            create(flavorName) {
+                dimension = "env"
+                if (values[0].isNotEmpty()) applicationIdSuffix = values[0]
+                if (values[1].isNotEmpty()) versionNameSuffix = values[1]
+                buildConfigField(
+                    "String",
+                    "FUJU_API_BASE_URL",
+                    "\"${localOrDefault("fuju.apiBaseUrl", values[2])}\"",
+                )
+                buildConfigField(
+                    "String",
+                    "AUTH_CORE_BASE_URL",
+                    "\"${localOrDefault("fuju.authCoreBaseUrl", values[3])}\"",
+                )
+                buildConfigField(
+                    "String",
+                    "SOCIAL_REDIRECT_URI",
+                    "\"${localOrDefault("fuju.socialRedirectUri", "fuju://auth/callback")}\"",
+                )
+            }
         }
     }
 
