@@ -10,9 +10,7 @@ struct iOSApp: App {
             ComposeHost(session: session)
                 .ignoresSafeArea()
                 .onOpenURL { url in
-                    // Custom URL Scheme (fuju://auth/callback) を Kotlin 側に通知する。
-                    // TODO(フェーズ 4): AuthStateMachine.completeSocialCallback に state/code を橋渡し。
-                    print("OAuth callback URL: \(url)")
+                    session.handleOAuthCallback(url: url)
                 }
         }
     }
@@ -46,5 +44,26 @@ final class IOSAppSession: ObservableObject {
     deinit {
         // Ktor HttpClient / AuthStateMachine の coroutine scope を確実に閉じる。
         container.close()
+    }
+
+    /// Custom URL Scheme `fuju://auth/callback/{provider}?state=...&code=...` を
+    /// Kotlin 側の OAuthCallbackParser で解釈し、AuthStateMachine に通知する。
+    func handleOAuthCallback(url: URL) {
+        guard let callback = OAuthCallbackParser.shared.parse(url: url.absoluteString) else {
+            return
+        }
+        let sm = container.authStateMachine
+        Task {
+            do {
+                _ = try await sm.completeSocialCallback(
+                    provider: callback.provider,
+                    state: callback.state,
+                    code: callback.code
+                )
+            } catch {
+                // AuthException は Swift から見ると NSError。ログに留める。
+                NSLog("OAuth callback failed: \(error)")
+            }
+        }
     }
 }

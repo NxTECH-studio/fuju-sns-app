@@ -82,6 +82,8 @@ kotlin {
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(project(":core:error"))
+    implementation(project(":feature:auth:domain"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)

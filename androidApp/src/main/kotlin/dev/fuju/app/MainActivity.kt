@@ -2,10 +2,15 @@ package dev.fuju.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import dev.fuju.composeApp.ComposeAppRoot
 import dev.fuju.composeApp.di.AppContainer
+import dev.fuju.core.error.AuthException
+import dev.fuju.feature.auth.domain.OAuthCallbackParser
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
@@ -20,8 +25,6 @@ class MainActivity : ComponentActivity() {
                 verboseLogging = BuildConfig.DEBUG,
             )
 
-        // Deep link (OAuth callback) があればバスに流す。本番では state / code を取り出して
-        // AuthStateMachine.completeSocialCallback に渡す。
         intent?.handleOAuthCallback()
 
         setContent {
@@ -43,7 +46,21 @@ class MainActivity : ComponentActivity() {
 
     private fun Intent.handleOAuthCallback() {
         val uri = data ?: return
-        if (uri.scheme != "fuju" || uri.host != "auth" || uri.path != "/callback") return
-        // TODO(フェーズ 4): provider / state / code を抽出して AuthStateMachine に通知
+        val callback = OAuthCallbackParser.parse(uri.toString()) ?: return
+        lifecycleScope.launch {
+            try {
+                container.authStateMachine.completeSocialCallback(
+                    provider = callback.provider,
+                    state = callback.state,
+                    code = callback.code,
+                )
+            } catch (e: AuthException) {
+                Log.w(TAG, "OAuth callback failed: ${e.code}", e)
+            }
+        }
+    }
+
+    private companion object {
+        const val TAG = "MainActivity"
     }
 }
