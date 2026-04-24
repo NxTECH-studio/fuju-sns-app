@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.roborazzi)
 }
 
 kotlin {
@@ -27,6 +28,20 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.kotlinx.coroutines.core)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+        androidUnitTest.dependencies {
+            implementation(libs.junit)
+            implementation(libs.robolectric)
+            implementation(libs.roborazzi)
+            implementation(libs.roborazzi.compose)
+            implementation(libs.roborazzi.rule)
+            implementation(libs.androidx.test.ext.junit)
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.androidx.compose.ui.test.manifest)
+            implementation(compose.material3)
+        }
     }
 }
 
@@ -45,5 +60,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
     }
 }

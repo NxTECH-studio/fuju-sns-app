@@ -10,6 +10,9 @@ androidx-activity-compose = "1.10.1"
 androidx-core-ktx = "1.15.0"
 androidx-lifecycle = "2.9.0"
 androidx-navigation = "2.9.0"
+# Compose UI test JUnit4 integration。Android の androidUnitTest で `createComposeRule()` を使うために必要。
+# JetBrains の compose.uiTest は commonTest 向けで androidx の JUnit4 rule は提供しない。
+androidx-compose-ui-test = "1.8.3"
 # JetBrains が KMP 向けに再配布する AndroidX Navigation fork (`org.jetbrains.androidx.navigation`)。
 # Compose Multiplatform 1.8.x と組み合わせて iOS commonMain で使える唯一のバージョン系列。
 jetbrains-navigation = "2.9.0-alpha16"
@@ -70,6 +73,8 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
+androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4-android", version.ref = "androidx-compose-ui-test" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-compose-ui-test" }
 jetbrains-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "jetbrains-navigation" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
 

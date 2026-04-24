@@ -65,6 +65,11 @@ jobs:
       - name: Assemble debug APK (dev flavor)
         run: ./gradlew :androidApp:assembleDevDebug
 
+      # Roborazzi screenshot test は scaffolding だけ残して CI 組み込みは保留。
+      # 開発者は手元で `./gradlew :feature:{auth,timeline,profile}:ui:recordRoborazziDebug`
+      # を必要に応じて走らせ、visual debugging に使う。CI での回帰検知を再開する際は
+      # docs/testing.md を参照しつつ verifyRoborazziDebug を戻す。
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
