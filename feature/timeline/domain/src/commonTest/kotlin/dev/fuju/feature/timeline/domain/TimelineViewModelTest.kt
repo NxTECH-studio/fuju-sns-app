@@ -157,7 +157,8 @@ class TimelineViewModelTest {
             // Optimistic 更新後に rollback されているので元に戻っている
             assertTrue(after.likedByViewer)
             assertEquals(5, after.likesCount)
-            assertEquals("boom", vm.state.value.error)
+            // sanitizeError() で AuthException 以外は固定文言に丸められる。
+            assertEquals("エラーが発生しました。", vm.state.value.error)
         }
 
     @Test
@@ -208,7 +209,8 @@ class TimelineViewModelTest {
             advanceUntilIdle()
 
             val state = vm.state.value
-            assertEquals("network down", state.error)
+            // sanitizeError() で RuntimeException は固定文言に丸められる。
+            assertEquals("エラーが発生しました。", state.error)
             assertFalse(state.loading)
             assertTrue(state.items.isEmpty())
         }

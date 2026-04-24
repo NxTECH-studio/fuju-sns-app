@@ -119,9 +119,11 @@ class FakeTimelineRepository : TimelineRepository {
         parentPostId: String?,
     ): Post {
         val input = CreatePostInput(content, imageIds, parentPostId)
-        createCalls += input
         nextCreateError?.let { throw it }
-        return createResponse(input)
+        // createResponse は `createCalls.size` を 0-indexed として読むので、append する前に組み立てる。
+        val response = createResponse(input)
+        createCalls += input
+        return response
     }
 
     override suspend fun deletePost(id: String) {
