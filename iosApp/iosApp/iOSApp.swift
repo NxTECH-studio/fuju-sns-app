@@ -33,10 +33,12 @@ final class IOSAppSession: ObservableObject {
     let container: AppContainer
 
     init() {
-        // xcconfig 経由で差し替え可能にする。現状は dev 値をハードコード。
+        // xcconfig 経由で差し替え可能にする refactor は別タスク。
+        // 現状は本番 HTTPS エンドポイントをハードコード。
+        // ローカル backend を叩きたい場合はこの値を `http://localhost:8080` 等に書き換える。
         self.container = AppContainer(
-            authCoreBaseUrl: "http://localhost:8081",
-            fujuApiBaseUrl: "http://localhost:8080",
+            authCoreBaseUrl: "https://auth.fujupay.app",
+            fujuApiBaseUrl: "https://snsapi.fujupay.app",
             verboseLogging: true
         )
     }

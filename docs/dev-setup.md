@@ -35,17 +35,22 @@ app/
 3. Gradle sync を待つ（プラグイン / Gradle 9.3 の自動ダウンロード）。
 4. `local.properties` に Android SDK パスが自動記入されていることを確認。
 5. **環境変数テンプレートをローカルにコピーする** (`.env.example` 参照):
-   - Android: `local.properties` に以下のキーを追記する（値は開発環境に合わせて書き換え）。
-     欠けた場合は flavor 既定値にフォールバックする。
+   - Android: デフォルトで HTTPS 本番エンドポイント
+     (`https://auth.fujupay.app` / `https://snsapi.fujupay.app`) を指すため、通常は
+     `local.properties` に URL を書く必要はない（Android SDK パスのみで動く）。
+     ローカル backend を叩きたい場合だけ以下を追記する:
      ```properties
      fuju.authCoreBaseUrl=http://10.0.2.2:8081
      fuju.apiBaseUrl=http://10.0.2.2:8080
      fuju.socialRedirectUri=fuju://auth/callback
      ```
      Android エミュレータからホスト PC を指すには `10.0.2.2` を使う。
+     cleartext HTTP を使う場合は別途 AndroidManifest の `usesCleartextTraffic` /
+     `networkSecurityConfig` を整備する必要がある（本リポジトリのデフォルトでは未設定）。
    - iOS: `cp iosApp/Configuration/Config.xcconfig.example iosApp/Configuration/Config.xcconfig`
-     してから値を書き換える。iOS Simulator からホスト PC を指すには `localhost` を使う。
-     `Config.xcconfig` 本体は `.gitignore` に入っているため commit されない。
+     してから値を書き換える（デフォルトは本番 HTTPS）。`Config.xcconfig` 本体は
+     `.gitignore` に入っているため commit されない。
+     ローカル backend を叩く場合は `http://localhost:8080` 等に書き換える。
 6. Run/Debug 構成プルダウンに **`androidApp [dev]`** が表示される
    （`.idea/runConfigurations/` に commit 済み）。
 7. 左側の **Build Variants** パネルで `androidApp` の Active Build Variant を
@@ -93,9 +98,13 @@ iOS Simulator で起動する。
 
 | flavor | applicationId | API | Auth |
 |--------|---------------|-----|------|
-| dev | dev.fuju.app.dev | `http://10.0.2.2:8080` | `http://10.0.2.2:8081` |
-| staging | dev.fuju.app.staging | `https://api-staging.fuju.example.com` | `https://auth-staging.fuju.example.com` |
-| prod | dev.fuju.app | `https://api.fuju.example.com` | `https://auth.fuju.example.com` |
+| dev | dev.fuju.app.dev | `https://snsapi.fujupay.app` | `https://auth.fujupay.app` |
+| staging | dev.fuju.app.staging | `https://snsapi.fujupay.app` | `https://auth.fujupay.app` |
+| prod | dev.fuju.app | `https://snsapi.fujupay.app` | `https://auth.fujupay.app` |
+
+現状は 3 flavor 全てが同じ HTTPS 本番エンドポイントを指している。将来
+`auth-staging.fujupay.app` / `snsapi-dev.fujupay.app` のようなサブドメインが
+必要になったら、`androidApp/build.gradle.kts` の `envFlavors` Map を書き換える。
 
 iOS は `iosApp/Configuration/Config.xcconfig` に同じキーを持たせ、Xcode スキーマ
 側で切替える（フェーズ 4 で 3 スキーマに分岐）。
@@ -103,6 +112,8 @@ iOS は `iosApp/Configuration/Config.xcconfig` に同じキーを持たせ、Xco
 上表は flavor の既定値。`local.properties` に `fuju.apiBaseUrl` /
 `fuju.authCoreBaseUrl` / `fuju.socialRedirectUri` を書くと、すべての flavor で
 その値が優先される（`androidApp/build.gradle.kts` の `localOrDefault(...)` 参照）。
+ローカル backend を叩くために cleartext HTTP URL を override する場合は、別途
+AndroidManifest の `usesCleartextTraffic` / `networkSecurityConfig` 整備が必要。
 詳細は `.env.example` を参照。
 
 ## 参照リポジトリ

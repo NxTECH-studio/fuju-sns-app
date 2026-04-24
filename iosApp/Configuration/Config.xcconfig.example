@@ -8,8 +8,8 @@
 // BuildConfig (Android 側 `buildConfigField`) と揃える環境変数:
 //   FUJU_API_BASE_URL / AUTH_CORE_BASE_URL / SOCIAL_REDIRECT_URI
 
-FUJU_API_BASE_URL = http://localhost:8080
-AUTH_CORE_BASE_URL = http://localhost:8081
+FUJU_API_BASE_URL = https://snsapi.fujupay.app
+AUTH_CORE_BASE_URL = https://auth.fujupay.app
 SOCIAL_REDIRECT_URI = fuju://auth/callback
 
 // Compose Multiplatform が出力する XCFramework のパス。

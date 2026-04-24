@@ -49,17 +49,14 @@ android {
 
     // flavor ごとのデフォルト URL 群。キー: flavor 名、値: [idSuffix, versionSuffix, apiBaseUrl, authCoreBaseUrl]。
     // 全て local.properties で 1 括 override できる。socialRedirectUri は全 flavor で同じ。
+    // 現状は 3 flavor 全てが同じ HTTPS 本番エンドポイントを指す。
+    // 将来 `auth-staging.fujupay.app` / `snsapi-dev.fujupay.app` のようなサブドメインが
+    // 必要になったら、この Map を書き換えるだけで対応できる。
     val envFlavors =
         mapOf(
-            "dev" to listOf(".dev", "-dev", "http://10.0.2.2:8080", "http://10.0.2.2:8081"),
-            "staging" to
-                listOf(
-                    ".staging",
-                    "-staging",
-                    "https://api-staging.fuju.example.com",
-                    "https://auth-staging.fuju.example.com",
-                ),
-            "prod" to listOf("", "", "https://api.fuju.example.com", "https://auth.fuju.example.com"),
+            "dev" to listOf(".dev", "-dev", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
+            "staging" to listOf(".staging", "-staging", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
+            "prod" to listOf("", "", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
         )
 
     productFlavors {
