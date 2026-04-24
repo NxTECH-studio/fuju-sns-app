@@ -124,4 +124,5 @@ private fun ErrorScreen(message: String) {
 class AppDependencies(
     val authStateMachine: AuthStateMachine,
     val timelineRepository: dev.fuju.feature.timeline.domain.TimelineRepository,
+    val profileRepository: dev.fuju.feature.profile.domain.ProfileRepository,
 )

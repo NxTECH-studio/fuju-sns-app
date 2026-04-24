@@ -31,7 +31,25 @@ sealed interface FujuDestination {
         val postId: String,
     ) : FujuDestination
 
+    /**
+     * 他人のプロフィール画面。`publicId` は backend 上の `sub` (ULID)。
+     * 自プロフィールは [MyProfile] を使うこと。
+     */
     @Serializable data class Profile(
         val publicId: String,
     ) : FujuDestination
+
+    /**
+     * フォロワー / フォロー中の一覧画面。
+     * @param sub 対象ユーザーの sub（ULID）
+     * @param followers true: フォロワー一覧、false: フォロー中一覧。enum を直接載せると
+     *   serialization まわりが増えるので bool に寄せている
+     */
+    @Serializable data class FollowList(
+        val sub: String,
+        val followers: Boolean,
+    ) : FujuDestination
+
+    /** 自プロフィール編集画面。自分のみ入れる想定。 */
+    @Serializable data object ProfileEdit : FujuDestination
 }
