@@ -1,25 +1,27 @@
 package dev.fuju.composeApp.nav
 
+import kotlinx.serialization.Serializable
+
 /**
- * 画面の遷移先。`androidx.navigation` を導入するフェーズ 4 以降で route path と
- * 対応づけるが、現状は sealed な tag として使う。
+ * NavHost の型安全 route 定義。`androidx.navigation:navigation-compose` の
+ * `composable<T>(...)` + `kotlinx.serialization` と組み合わせて使う。
+ *
+ * Destination のインスタンスをそのまま `NavController.navigate(dest)` に渡せる。
  */
-sealed class FujuDestination(
-    val label: String,
-) {
-    data object Login : FujuDestination("Login")
+sealed interface FujuDestination {
+    @Serializable data object Login : FujuDestination
 
-    data object HomeTimeline : FujuDestination("Home")
+    @Serializable data object HomeTimeline : FujuDestination
 
-    data object GlobalTimeline : FujuDestination("Global")
+    @Serializable data object GlobalTimeline : FujuDestination
 
-    data class PostDetail(
+    @Serializable data class PostDetail(
         val postId: String,
-    ) : FujuDestination("Post")
+    ) : FujuDestination
 
-    data class Profile(
+    @Serializable data class Profile(
         val publicId: String,
-    ) : FujuDestination("Profile")
+    ) : FujuDestination
 
-    data object AdminBadges : FujuDestination("Admin Badges")
+    @Serializable data object AdminBadges : FujuDestination
 }

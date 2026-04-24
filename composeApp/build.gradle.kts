@@ -65,6 +65,8 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
 
+            implementation(libs.jetbrains.navigation.compose)
+            implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {

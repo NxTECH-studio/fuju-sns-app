@@ -13,11 +13,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import dev.fuju.composeApp.nav.FujuDestination
 import dev.fuju.core.domain.AuthStatus
 import dev.fuju.core.ui.components.EmptyState
@@ -31,9 +33,9 @@ import dev.fuju.feature.auth.ui.MFAChallenge
 /**
  * KMP アプリのルート Composable。Android / iOS のどちらからも呼ばれる。
  *
- * 現段階では最低限のナビゲーション（login → timeline → profile）だけを実装。
- * Navigation ライブラリは後続タスクで確定するため、`FujuDestination` + 素の state
- * でルーティングする。
+ * `androidx.navigation:navigation-compose` (KMP 2.9.0) の NavHost を使い、
+ * [FujuDestination] の sealed route 型で型安全に遷移する。認証状態は
+ * [AuthStateMachine] から購読し、未認証と認証済みで start destination を切替える。
  */
 @Composable
 fun ComposeAppRoot(
@@ -41,18 +43,25 @@ fun ComposeAppRoot(
     modifier: Modifier = Modifier,
 ) {
     val snapshot by deps.authStateMachine.state.collectAsState()
-    var destination by remember { mutableStateOf<FujuDestination>(FujuDestination.Login) }
+    val navController = rememberNavController()
 
     LaunchedEffect(Unit) {
         deps.authStateMachine.bootstrap()
     }
 
     LaunchedEffect(snapshot.status) {
-        if (snapshot.status == AuthStatus.Authenticated && destination == FujuDestination.Login) {
-            destination = FujuDestination.HomeTimeline
-        }
-        if (snapshot.status == AuthStatus.Unauthenticated && destination != FujuDestination.Login) {
-            destination = FujuDestination.Login
+        when (snapshot.status) {
+            AuthStatus.Authenticated ->
+                navController.navigate(FujuDestination.HomeTimeline) {
+                    popUpTo(FujuDestination.Login) { inclusive = true }
+                    launchSingleTop = true
+                }
+            AuthStatus.Unauthenticated ->
+                navController.navigate(FujuDestination.Login) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                }
+            else -> Unit
         }
     }
 
@@ -60,35 +69,67 @@ fun ComposeAppRoot(
         Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (snapshot.status) {
                 AuthStatus.Idle, AuthStatus.Authenticating -> LoadingScreen()
-                AuthStatus.Error -> ErrorScreen(message = AuthErrorMessages.toMessage(snapshot.error) ?: "エラーが発生しました")
+                AuthStatus.Error ->
+                    ErrorScreen(
+                        message = AuthErrorMessages.toMessage(snapshot.error) ?: "エラーが発生しました",
+                    )
                 AuthStatus.MFARequired ->
                     MFAChallenge(
                         onVerify = { code, rc -> deps.authStateMachine.verifyMFA(code, rc) },
                         onCancel = { deps.authStateMachine.cancelMFA() },
                         attempts = snapshot.mfaAttempts,
                     )
-                AuthStatus.Unauthenticated ->
-                    LoginForm(
-                        onLogin = { id, pw -> deps.authStateMachine.login(id, pw) },
-                        onLoginWithSocial = { /* フェーズ 2 end */ },
-                    )
-                AuthStatus.Authenticated -> AuthenticatedScreen(deps, destination) { destination = it }
+                AuthStatus.Unauthenticated, AuthStatus.Authenticated ->
+                    FujuNavHost(deps = deps, navController = navController)
             }
         }
     }
 }
 
 @Composable
-private fun AuthenticatedScreen(
+private fun FujuNavHost(
     deps: AppDependencies,
-    destination: FujuDestination,
-    onNavigate: (FujuDestination) -> Unit,
+    navController: NavHostController,
 ) {
+    val snapshot by deps.authStateMachine.state.collectAsState()
+    val startDestination: FujuDestination =
+        if (snapshot.status == AuthStatus.Authenticated) {
+            FujuDestination.HomeTimeline
+        } else {
+            FujuDestination.Login
+        }
+
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable<FujuDestination.Login> {
+            LoginForm(
+                onLogin = { id, pw -> deps.authStateMachine.login(id, pw) },
+                onLoginWithSocial = { /* フェーズ 13 で OAuth callback を経由 */ },
+            )
+        }
+        composable<FujuDestination.HomeTimeline> {
+            PlaceholderScreen(label = "Home Timeline")
+        }
+        composable<FujuDestination.GlobalTimeline> {
+            PlaceholderScreen(label = "Global Timeline")
+        }
+        composable<FujuDestination.PostDetail> { backStack ->
+            val args = backStack.toRoute<FujuDestination.PostDetail>()
+            PlaceholderScreen(label = "Post ${args.postId}")
+        }
+        composable<FujuDestination.Profile> { backStack ->
+            val args = backStack.toRoute<FujuDestination.Profile>()
+            PlaceholderScreen(label = "Profile @${args.publicId}")
+        }
+        composable<FujuDestination.AdminBadges> {
+            PlaceholderScreen(label = "Admin Badges")
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderScreen(label: String) {
     Column(modifier = Modifier.fillMaxSize().padding(FujuDimens.SpaceL)) {
-        Text(
-            text = "Fuju (${destination.label})",
-            style = MaterialTheme.typography.headlineMedium,
-        )
+        Text(text = "Fuju ($label)", style = MaterialTheme.typography.headlineMedium)
         EmptyState(
             title = "準備中",
             description = "フェーズ 3 以降で timeline / profile / admin を接続します。",
