@@ -65,15 +65,19 @@ jobs:
       - name: Assemble debug APK (dev flavor)
         run: ./gradlew :androidApp:assembleDevDebug
 
-      # Screenshot 回帰検知。baseline PNG との 0px 差を要求する。
-      # 初回は baseline が未存在なので `./gradlew recordRoborazziDebug` を
-      # 手元で実行して PNG を commit する運用（docs/testing.md 参照）。
-      - name: Verify screenshots (roborazzi)
+      # Screenshot 回帰検知。baseline PNG と 0px 差を要求する。
+      # `verifyAndRecordRoborazziDebug` は:
+      #   - baseline が既にあれば verify（diff があれば fail）
+      #   - baseline が無ければ record（artifact としてアップロードされる）
+      # 初回は開発者が手元で `./gradlew recordRoborazziDebug` を走らせて PNG を
+      # commit するまで baseline は repo に入らない。その間も CI が真っ赤にならない
+      # ように record モードを許可しておく（docs/testing.md 参照）。
+      - name: Verify / record screenshots (roborazzi)
         run: >-
           ./gradlew
-          :feature:auth:ui:verifyRoborazziDebug
-          :feature:timeline:ui:verifyRoborazziDebug
-          :feature:profile:ui:verifyRoborazziDebug
+          :feature:auth:ui:verifyAndRecordRoborazziDebug
+          :feature:timeline:ui:verifyAndRecordRoborazziDebug
+          :feature:profile:ui:verifyAndRecordRoborazziDebug
 
       - name: Upload test reports
         if: always()
@@ -84,14 +88,19 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
 
-      - name: Upload roborazzi diff reports
-        if: failure()
+      # 成功 / 失敗にかかわらず roborazzi の出力（生成された baseline と diff）を
+      # artifact として上げる。初回 CI では record モードで生成された PNG を
+      # ダウンロードしてもらい、手元で `src/androidUnitTest/roborazzi/` に配置して
+      # commit する運用（docs/testing.md 参照）。
+      - name: Upload roborazzi outputs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: roborazzi-diffs
+          name: roborazzi-outputs
           path: |
             **/build/outputs/roborazzi/
             **/build/reports/roborazzi/
+            **/src/androidUnitTest/roborazzi/
 
   ios-build:
     name: iOS framework + Xcode build
