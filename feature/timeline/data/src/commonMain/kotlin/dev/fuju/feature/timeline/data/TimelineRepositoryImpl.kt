@@ -22,7 +22,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Backend `/timeline/*`, `/posts/*` を叩く実装。
+ * Backend `/timeline/{home,global,user}` と `/posts/{id}` を叩く実装。
  * React 版 `../frontend/src/api/endpoints/timelines.ts` / `posts.ts` を移植。
  */
 class TimelineRepositoryImpl(private val client: HttpClient) : TimelineRepository {

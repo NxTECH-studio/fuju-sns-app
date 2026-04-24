@@ -6,7 +6,7 @@ import dev.fuju.core.domain.GrantBadgeInput
 import dev.fuju.core.domain.UpdateBadgeInput
 
 /**
- * Admin 機能の Repository 抽象。`/v1/admin/badges/*` を叩く。
+ * Admin 機能の Repository 抽象。`/v1/admin/badges/{id}` 系を叩く。
  * React 版 `../frontend/src/api/endpoints/admin.ts` を移植。
  */
 interface AdminRepository {

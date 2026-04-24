@@ -3,7 +3,7 @@ package dev.fuju.feature.timeline.domain
 import dev.fuju.core.domain.Post
 
 /**
- * Backend `GET /timeline/*` で使うパラメータ。React 版の offset ページング。
+ * Backend `GET /timeline/{home,global,user}` で使うパラメータ。React 版の offset ページング。
  */
 data class TimelineQuery(
     val limit: Int = 20,

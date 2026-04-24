@@ -6,7 +6,7 @@ import dev.fuju.core.domain.ProfileUser
 import dev.fuju.core.domain.UpdateProfileInput
 
 /**
- * Backend `/users/*`, `/me` を叩く Repository の抽象。
+ * Backend `/users/{sub}` 系と `/me` を叩く Repository の抽象。
  * `../frontend/src/api/endpoints/users.ts`, `me.ts`, `follows.ts` を移植。
  */
 interface ProfileRepository {

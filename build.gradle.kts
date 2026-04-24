@@ -73,6 +73,27 @@ allprojects {
     }
 }
 
+// Kotlin 2.2: KMP モジュール間で同一の unique klib name が発生しないよう、
+// archivesName をモジュールパスから生成して衝突を防ぐ。
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.multiplatform") {
+        val qualifiedName = path.trimStart(':').replace(':', '-')
+        extensions.configure(org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension::class.java) {
+            targets.configureEach {
+                compilations.configureEach {
+                    compileTaskProvider.configure {
+                        // klib の unique_name は archivesName に連動するので、
+                        // これで core-domain / feature-auth-domain が区別される。
+                    }
+                }
+            }
+        }
+        extensions.findByType(BasePluginExtension::class.java)?.apply {
+            archivesName.set(qualifiedName)
+        }
+    }
+}
+
 // ルート check: lint / detekt / spotless をまとめて叩ける entry-point
 tasks.register("lintAll") {
     group = "verification"

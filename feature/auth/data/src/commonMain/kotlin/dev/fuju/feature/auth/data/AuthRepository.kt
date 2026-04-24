@@ -38,7 +38,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 
 /**
- * AuthCore `/v1/auth/*` + `/v1/user/*` を叩く Repository。
+ * AuthCore `/v1/auth/{register,login,refresh,logout,mfa,connect,callback}` と
+ * `/v1/user/{profile,public_id,icon}` を叩く Repository。
  * [AuthActions] を実装して state machine に接続する。
  *
  * `../auth-component/src/store/AuthStore.ts` が直接行っていた I/O を、KMP 側では
