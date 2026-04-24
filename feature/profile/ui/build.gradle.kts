@@ -17,10 +17,15 @@ kotlin {
             implementation(project(":core:domain"))
             implementation(project(":core:ui"))
             implementation(project(":feature:profile:domain"))
+            // ユーザー投稿タイムライン + PostRow を共有するため timeline:ui / domain を取り込む。
+            implementation(project(":feature:timeline:domain"))
+            implementation(project(":feature:timeline:ui"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(libs.coil.compose)
+            implementation(libs.kotlinx.coroutines.core)
         }
     }
 }
