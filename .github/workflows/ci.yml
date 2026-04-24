@@ -65,6 +65,16 @@ jobs:
       - name: Assemble debug APK (dev flavor)
         run: ./gradlew :androidApp:assembleDevDebug
 
+      # Screenshot 回帰検知。baseline PNG との 0px 差を要求する。
+      # 初回は baseline が未存在なので `./gradlew recordRoborazziDebug` を
+      # 手元で実行して PNG を commit する運用（docs/testing.md 参照）。
+      - name: Verify screenshots (roborazzi)
+        run: >-
+          ./gradlew
+          :feature:auth:ui:verifyRoborazziDebug
+          :feature:timeline:ui:verifyRoborazziDebug
+          :feature:profile:ui:verifyRoborazziDebug
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -73,6 +83,15 @@ jobs:
           path: |
             **/build/reports/tests/
             **/build/test-results/
+
+      - name: Upload roborazzi diff reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roborazzi-diffs
+          path: |
+            **/build/outputs/roborazzi/
+            **/build/reports/roborazzi/
 
   ios-build:
     name: iOS framework + Xcode build
