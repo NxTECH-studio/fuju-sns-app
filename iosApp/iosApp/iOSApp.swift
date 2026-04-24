@@ -33,11 +33,22 @@ final class IOSAppSession: ObservableObject {
     let container: AppContainer
 
     init() {
-        // xcconfig 経由で差し替え可能にする。現状は dev 値をハードコード。
+        // xcconfig 経由で差し替え可能にする refactor は別タスク。
+        // 現状は本番 HTTPS エンドポイントをハードコード。
+        // ローカル backend を叩きたい場合はこの値を `http://localhost:8080` 等に書き換える。
+        //
+        // verboseLogging は DEBUG ビルドでのみ有効化する。Release ビルドで BODY レベル
+        // の Ktor ログが出ると Authorization ヘッダや response body（トークンを含む
+        // 可能性あり）が NSLog に漏れるため必須の guard。
+        #if DEBUG
+        let verbose = true
+        #else
+        let verbose = false
+        #endif
         self.container = AppContainer(
-            authCoreBaseUrl: "http://localhost:8081",
-            fujuApiBaseUrl: "http://localhost:8080",
-            verboseLogging: true
+            authCoreBaseUrl: "https://auth.fujupay.app",
+            fujuApiBaseUrl: "https://snsapi.fujupay.app",
+            verboseLogging: verbose
         )
     }
 

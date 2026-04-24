@@ -99,12 +99,19 @@ class AuthStateMachine(
     // --- Login ---
     // loginMutex で login / verifyMFA を直列化し、preToken と accessExpEpochSec の
     // 書き換えが同時実行で取り違えられないようにする。
+    //
+    // status を Authenticating に動かさないのが重要。動かすと ComposeAppRoot の
+    // `when` が LoadingScreen に切り替わり、LoginForm が unmount → 呼び出し元の
+    // rememberCoroutineScope() が cancel されて login の HTTP 呼び出しが
+    // CancellationException で打ち切られ、最終的に state が Authenticating のまま
+    // 固まって spinner が無限ループする。LoginForm 側の `loading` フラグで
+    // ローディング表示を担ってもらう。error のみ開始時にクリアする。
     suspend fun login(
         identifier: String,
         password: String,
     ): LoginResult =
         loginMutex.withLock {
-            update(status = AuthStatus.Authenticating, error = null)
+            update(error = null)
             try {
                 val res = actions.login(identifier, password)
                 if (res.mfaRequired) {

@@ -106,9 +106,9 @@ class AuthStateMachineTest {
                 // Initial
                 assertEquals(AuthStatus.Idle, awaitItem().status)
                 machine.login("alice", "pw")
-                // 遷移は copy ベースなので、同一 status の再 emit は飛ばされる
-                assertEquals(AuthStatus.Authenticating, awaitItem().status)
-                // 認証完了 (user 更新の emit)
+                // login 中は status を Authenticating に動かさない（LoginForm を unmount
+                // させて自分の coroutine scope を cancel してしまう bug 対策）。
+                // Idle → Authenticated に直接遷移する。
                 val final = awaitItem()
                 assertEquals(AuthStatus.Authenticated, final.status)
                 cancelAndIgnoreRemainingEvents()
