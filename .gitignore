@@ -1,0 +1,63 @@
+# Gradle
+.gradle/
+build/
+!gradle/
+**/build/
+!src/**/build/
+out/
+
+# IDE - IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+
+# IDE - VS Code
+.vscode/
+.fleet/
+
+# macOS
+.DS_Store
+
+# Xcode / iOS
+xcuserdata/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata
+!*.xcodeproj/project.xcworkspace
+!*.xcworkspace
+*.xcworkspace/xcuserdata
+DerivedData/
+Pods/
+*.hmap
+
+# Kotlin / Native
+.kotlin/
+kotlin-js-store/
+konan/
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.xcframework
+captures/
+app/release/
+
+# Logs
+*.log
+
+# Node (for references or tooling)
+node_modules/
+
+# Environment
+.env
+.env.local
+*.keystore
+!debug.keystore
+
+# Internal tooling state (subagent configs etc. not related to build output)
+.claude/
+.konan/
+

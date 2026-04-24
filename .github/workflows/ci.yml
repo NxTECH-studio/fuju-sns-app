@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ktlint + detekt + spotless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+
+      - name: ktlint + detekt + spotless
+        run: ./gradlew spotlessCheck ktlintCheck detekt --continue
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            **/build/reports/ktlint/
+            **/build/reports/detekt/
+            **/build/reports/spotless/
+
+  android-build:
+    name: Android build + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests (commonTest)
+        run: ./gradlew allTests
+
+      - name: Assemble debug APK (dev flavor)
+        run: ./gradlew :androidApp:assembleDevDebug
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+
+  ios-build:
+    name: iOS framework + Xcode build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build iOS Simulator framework
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+      # Xcode プロジェクトは KMP plugin で Generate される想定。
+      # プロジェクト生成直後は以下の step を有効化して Xcode build まで回す。
+      # - name: Xcode build
+      #   working-directory: iosApp
+      #   run: |
+      #     xcodebuild \
+      #       -scheme iosApp \
+      #       -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+      #       CODE_SIGNING_ALLOWED=NO \
+      #       build
