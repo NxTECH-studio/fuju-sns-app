@@ -2,7 +2,7 @@ package dev.fuju.core.error
 
 /**
  * AuthCore / Fuju Backend が返す error code の辞書。
- * `../auth-component/src/ErrorCodes.ts` の 34 種を 1:1 で移植した列挙型。
+ * `../auth-component/src/ErrorCodes.ts` の 33 種を 1:1 で移植し、さらに [UNKNOWN] を追加。
  *
  * wire format は string code（`enum.name` と同じ）。不明な code は [UNKNOWN] に寄せる。
  */
