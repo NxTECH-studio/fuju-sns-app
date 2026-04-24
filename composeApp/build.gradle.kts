@@ -68,6 +68,9 @@ kotlin {
             implementation(libs.jetbrains.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            // AppContainer から Ktor HttpClient / HttpClientEngineFactory を保持するため、
+            // core:network の implementation で隠れている ktor-client-core を直接見せる。
+            implementation(libs.ktor.client.core)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
