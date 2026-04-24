@@ -1,0 +1,16 @@
+// iOS build flavors 用の xcconfig テンプレート。
+// 使い方:
+//   cp Config.xcconfig.example Config.xcconfig
+// した上で、開発環境に合わせて URL を書き換えてください。
+// `Config.xcconfig` 本体は `.gitignore` に入っています。
+//
+// Xcode でスキーマごとに Dev / Staging / Prod の xcconfig を読み込む。
+// BuildConfig (Android 側 `buildConfigField`) と揃える環境変数:
+//   FUJU_API_BASE_URL / AUTH_CORE_BASE_URL / SOCIAL_REDIRECT_URI
+
+FUJU_API_BASE_URL = http://localhost:8080
+AUTH_CORE_BASE_URL = http://localhost:8081
+SOCIAL_REDIRECT_URI = fuju://auth/callback
+
+// Compose Multiplatform が出力する XCFramework のパス。
+KOTLIN_FRAMEWORK_BUILD_TYPE = debug
