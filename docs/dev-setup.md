@@ -34,9 +34,21 @@ app/
 2. Android Studio Panda3 を起動し、`Open...` で `/.../fuju/app/` を選ぶ。
 3. Gradle sync を待つ（プラグイン / Gradle 9.3 の自動ダウンロード）。
 4. `local.properties` に Android SDK パスが自動記入されていることを確認。
-5. Run/Debug 構成プルダウンに **`androidApp [dev]`** が表示される
+5. **環境変数テンプレートをローカルにコピーする** (`.env.example` 参照):
+   - Android: `local.properties` に以下のキーを追記する（値は開発環境に合わせて書き換え）。
+     欠けた場合は flavor 既定値にフォールバックする。
+     ```properties
+     fuju.authCoreBaseUrl=http://10.0.2.2:8081
+     fuju.apiBaseUrl=http://10.0.2.2:8080
+     fuju.socialRedirectUri=fuju://auth/callback
+     ```
+     Android エミュレータからホスト PC を指すには `10.0.2.2` を使う。
+   - iOS: `cp iosApp/Configuration/Config.xcconfig.example iosApp/Configuration/Config.xcconfig`
+     してから値を書き換える。iOS Simulator からホスト PC を指すには `localhost` を使う。
+     `Config.xcconfig` 本体は `.gitignore` に入っているため commit されない。
+6. Run/Debug 構成プルダウンに **`androidApp [dev]`** が表示される
    （`.idea/runConfigurations/` に commit 済み）。
-6. 左側の **Build Variants** パネルで `androidApp` の Active Build Variant を
+7. 左側の **Build Variants** パネルで `androidApp` の Active Build Variant を
    `devDebug` に設定する（初期値は `stagingDebug` や `prodDebug` になる場合がある）。
 
 ### Run ボタンがグレーアウトする場合
@@ -87,6 +99,11 @@ iOS Simulator で起動する。
 
 iOS は `iosApp/Configuration/Config.xcconfig` に同じキーを持たせ、Xcode スキーマ
 側で切替える（フェーズ 4 で 3 スキーマに分岐）。
+
+上表は flavor の既定値。`local.properties` に `fuju.apiBaseUrl` /
+`fuju.authCoreBaseUrl` / `fuju.socialRedirectUri` を書くと、すべての flavor で
+その値が優先される（`androidApp/build.gradle.kts` の `localOrDefault(...)` 参照）。
+詳細は `.env.example` を参照。
 
 ## 参照リポジトリ
 
