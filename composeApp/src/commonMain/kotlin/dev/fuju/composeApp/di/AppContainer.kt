@@ -9,6 +9,8 @@ import dev.fuju.core.storage.InMemoryTokenStorage
 import dev.fuju.feature.auth.data.AuthRepository
 import dev.fuju.feature.auth.domain.AuthConfig
 import dev.fuju.feature.auth.domain.AuthStateMachine
+import dev.fuju.feature.profile.data.ProfileRepositoryImpl
+import dev.fuju.feature.profile.domain.ProfileRepository
 import dev.fuju.feature.timeline.data.TimelineRepositoryImpl
 import dev.fuju.feature.timeline.domain.TimelineRepository
 
@@ -40,11 +42,13 @@ class AppContainer(
     val authStateMachine = AuthStateMachine(authRepository, AuthConfig())
 
     val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
+    val profileRepository: ProfileRepository = ProfileRepositoryImpl(apiHttpClient)
 
     fun asAppDependencies(): AppDependencies =
         AppDependencies(
             authStateMachine = authStateMachine,
             timelineRepository = timelineRepository,
+            profileRepository = profileRepository,
         )
 
     override fun close() {

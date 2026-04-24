@@ -1,9 +1,9 @@
 package dev.fuju.composeApp.shell
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -34,8 +35,12 @@ import dev.fuju.composeApp.AppDependencies
 import dev.fuju.composeApp.nav.FujuDestination
 import dev.fuju.core.domain.AuthStatus
 import dev.fuju.core.domain.Post
-import dev.fuju.core.ui.components.EmptyState
-import dev.fuju.core.ui.theme.FujuDimens
+import dev.fuju.feature.profile.domain.FollowListKind
+import dev.fuju.feature.profile.domain.FollowListViewModel
+import dev.fuju.feature.profile.domain.ProfileViewModel
+import dev.fuju.feature.profile.ui.FollowListScreen
+import dev.fuju.feature.profile.ui.ProfileEditScreen
+import dev.fuju.feature.profile.ui.UserProfileScreen
 import dev.fuju.feature.timeline.domain.PostDetailViewModel
 import dev.fuju.feature.timeline.domain.TimelineKind
 import dev.fuju.feature.timeline.domain.TimelineViewModel
@@ -143,7 +148,51 @@ fun FujuShell(
                 )
             }
             composable<FujuDestination.MyProfile> {
-                PlaceholderScreen(label = "My Profile")
+                val profileScope = rememberCoroutineScope()
+                val profileViewModel =
+                    remember(deps.profileRepository, deps.timelineRepository, profileScope) {
+                        ProfileViewModel(
+                            repository = deps.profileRepository,
+                            targetSub = null,
+                            scope = profileScope,
+                        )
+                    }
+                // 自分用の timeline は sub が解決されるまで作れないので、profile state の user.sub を鍵に再生成する。
+                val profileState by profileViewModel.state.collectAsState()
+                val mySub = profileState.user?.sub
+                if (mySub == null) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    val timelineViewModel =
+                        remember(mySub, deps.timelineRepository, profileScope) {
+                            TimelineViewModel(
+                                repository = deps.timelineRepository,
+                                kind = TimelineKind.User(mySub),
+                                scope = profileScope,
+                            )
+                        }
+                    UserProfileScreen(
+                        profileViewModel = profileViewModel,
+                        timelineViewModel = timelineViewModel,
+                        canLike = canLike,
+                        onOpenPost = { post ->
+                            navController.navigate(FujuDestination.PostDetail(post.id))
+                        },
+                        onOpenAuthor = { post ->
+                            post.author?.let { navController.navigate(FujuDestination.Profile(it.sub)) }
+                        },
+                        onReply = { post -> composerMode = ComposerMode.Reply(post) },
+                        onOpenFollowers = { sub ->
+                            navController.navigate(FujuDestination.FollowList(sub, followers = true))
+                        },
+                        onOpenFollowing = { sub ->
+                            navController.navigate(FujuDestination.FollowList(sub, followers = false))
+                        },
+                        onOpenEdit = { navController.navigate(FujuDestination.ProfileEdit) },
+                    )
+                }
             }
             composable<FujuDestination.AdminBadges> {
                 PlaceholderScreen(label = "Admin Badges")
@@ -171,7 +220,78 @@ fun FujuShell(
             }
             composable<FujuDestination.Profile> { backStack ->
                 val args = backStack.toRoute<FujuDestination.Profile>()
-                PlaceholderScreen(label = "Profile @${args.publicId}")
+                val profileScope = rememberCoroutineScope()
+                val profileViewModel =
+                    remember(args.publicId, deps.profileRepository, profileScope) {
+                        ProfileViewModel(
+                            repository = deps.profileRepository,
+                            targetSub = args.publicId,
+                            scope = profileScope,
+                        )
+                    }
+                val timelineViewModel =
+                    remember(args.publicId, deps.timelineRepository, profileScope) {
+                        TimelineViewModel(
+                            repository = deps.timelineRepository,
+                            kind = TimelineKind.User(args.publicId),
+                            scope = profileScope,
+                        )
+                    }
+                UserProfileScreen(
+                    profileViewModel = profileViewModel,
+                    timelineViewModel = timelineViewModel,
+                    canLike = canLike,
+                    onOpenPost = { post ->
+                        navController.navigate(FujuDestination.PostDetail(post.id))
+                    },
+                    onOpenAuthor = { post ->
+                        post.author?.let { navController.navigate(FujuDestination.Profile(it.sub)) }
+                    },
+                    onReply = { post -> composerMode = ComposerMode.Reply(post) },
+                    onOpenFollowers = { sub ->
+                        navController.navigate(FujuDestination.FollowList(sub, followers = true))
+                    },
+                    onOpenFollowing = { sub ->
+                        navController.navigate(FujuDestination.FollowList(sub, followers = false))
+                    },
+                    onOpenEdit = { navController.navigate(FujuDestination.ProfileEdit) },
+                )
+            }
+            composable<FujuDestination.FollowList> { backStack ->
+                val args = backStack.toRoute<FujuDestination.FollowList>()
+                val kind = if (args.followers) FollowListKind.Followers else FollowListKind.Following
+                val listScope = rememberCoroutineScope()
+                val listViewModel =
+                    remember(args.sub, kind, deps.profileRepository, listScope) {
+                        FollowListViewModel(
+                            repository = deps.profileRepository,
+                            targetSub = args.sub,
+                            kind = kind,
+                            scope = listScope,
+                        )
+                    }
+                FollowListScreen(
+                    viewModel = listViewModel,
+                    onOpenUser = { user ->
+                        navController.navigate(FujuDestination.Profile(user.sub))
+                    },
+                )
+            }
+            composable<FujuDestination.ProfileEdit> {
+                val editScope = rememberCoroutineScope()
+                val editViewModel =
+                    remember(deps.profileRepository, editScope) {
+                        ProfileViewModel(
+                            repository = deps.profileRepository,
+                            targetSub = null,
+                            scope = editScope,
+                        )
+                    }
+                ProfileEditScreen(
+                    viewModel = editViewModel,
+                    onSave = { navController.popBackStack() },
+                    onCancel = { navController.popBackStack() },
+                )
             }
         }
     }
@@ -275,11 +395,13 @@ private fun ShellOverflowMenu(onLogout: () -> Unit) {
 
 @Composable
 private fun PlaceholderScreen(label: String) {
-    Column(modifier = Modifier.fillMaxSize().padding(FujuDimens.SpaceL)) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxSize().padding(dev.fuju.core.ui.theme.FujuDimens.SpaceL),
+    ) {
         Text(text = "Fuju ($label)", style = MaterialTheme.typography.headlineMedium)
-        EmptyState(
+        dev.fuju.core.ui.components.EmptyState(
             title = "準備中",
-            description = "フェーズ 3 以降で profile / admin を接続します。",
+            description = "フェーズ 3 以降で admin を接続します。",
         )
     }
 }
@@ -290,6 +412,8 @@ private fun NavDestination?.titleForDestination(): String {
         ?: when {
             hasRoute(FujuDestination.PostDetail::class) -> "投稿"
             hasRoute(FujuDestination.Profile::class) -> "プロフィール"
+            hasRoute(FujuDestination.FollowList::class) -> "フォロー一覧"
+            hasRoute(FujuDestination.ProfileEdit::class) -> "プロフィール編集"
             else -> "Fuju"
         }
 }
