@@ -23,7 +23,8 @@ object AuthErrorMessages {
             ErrorCode.EMAIL_INVALID -> "メールアドレスの形式が正しくありません。"
             ErrorCode.PASSWORD_TOO_SHORT -> "パスワードは 6 文字以上で指定してください。"
             ErrorCode.TOKEN_EXPIRED, ErrorCode.TOKEN_INVALID,
-            ErrorCode.TOKEN_REVOKED, ErrorCode.TOKEN_MALFORMED -> "セッションが無効になりました。再ログインしてください。"
+            ErrorCode.TOKEN_REVOKED, ErrorCode.TOKEN_MALFORMED,
+            -> "セッションが無効になりました。再ログインしてください。"
             ErrorCode.MFA_REQUIRED -> "MFA 認証が必要です。"
             ErrorCode.MFA_NOT_ENABLED -> "MFA が有効になっていません。"
             ErrorCode.MFA_ALREADY_ENABLED -> "MFA はすでに有効です。"
@@ -39,7 +40,8 @@ object AuthErrorMessages {
             ErrorCode.FILE_TOO_LARGE -> "ファイルサイズが大きすぎます。"
             ErrorCode.FILE_FORMAT_INVALID -> "ファイル形式がサポートされていません。"
             ErrorCode.INTERNAL_SERVER_ERROR, ErrorCode.SERVICE_UNAVAILABLE,
-            ErrorCode.METHOD_NOT_ALLOWED, ErrorCode.NOT_IMPLEMENTED -> "サーバーでエラーが発生しました。"
+            ErrorCode.METHOD_NOT_ALLOWED, ErrorCode.NOT_IMPLEMENTED,
+            -> "サーバーでエラーが発生しました。"
             ErrorCode.NETWORK_ERROR -> "ネットワークに接続できませんでした。"
             ErrorCode.UNKNOWN -> e.message ?: "不明なエラーが発生しました。"
         }

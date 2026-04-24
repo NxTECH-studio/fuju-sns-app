@@ -17,13 +17,14 @@ data class AuthSnapshot(
     val needsPublicIdSetup: Boolean,
 ) {
     companion object {
-        val Initial: AuthSnapshot = AuthSnapshot(
-            status = AuthStatus.Idle,
-            user = null,
-            preTokenPresent = false,
-            error = null,
-            mfaAttempts = 0,
-            needsPublicIdSetup = false,
-        )
+        val Initial: AuthSnapshot =
+            AuthSnapshot(
+                status = AuthStatus.Idle,
+                user = null,
+                preTokenPresent = false,
+                error = null,
+                mfaAttempts = 0,
+                needsPublicIdSetup = false,
+            )
     }
 }

@@ -15,12 +15,30 @@ data class TimelineQuery(
  */
 interface TimelineRepository {
     suspend fun getHome(query: TimelineQuery): List<Post>
+
     suspend fun getGlobal(query: TimelineQuery): List<Post>
-    suspend fun getUser(sub: String, query: TimelineQuery): List<Post>
+
+    suspend fun getUser(
+        sub: String,
+        query: TimelineQuery,
+    ): List<Post>
+
     suspend fun getPost(id: String): Post
-    suspend fun getReplies(id: String, query: TimelineQuery): List<Post>
+
+    suspend fun getReplies(
+        id: String,
+        query: TimelineQuery,
+    ): List<Post>
+
     suspend fun likePost(id: String)
+
     suspend fun unlikePost(id: String)
-    suspend fun createPost(content: String, imageIds: List<String>, parentPostId: String?): Post
+
+    suspend fun createPost(
+        content: String,
+        imageIds: List<String>,
+        parentPostId: String?,
+    ): Post
+
     suspend fun deletePost(id: String)
 }

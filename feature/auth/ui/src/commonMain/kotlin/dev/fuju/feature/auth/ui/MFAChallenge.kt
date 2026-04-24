@@ -29,8 +29,8 @@ import kotlinx.coroutines.launch
 fun MFAChallenge(
     onVerify: suspend (code: String?, recoveryCode: String?) -> Unit,
     onCancel: () -> Unit,
-    attempts: Int = 0,
     modifier: Modifier = Modifier,
+    attempts: Int = 0,
 ) {
     var usingRecovery by remember { mutableStateOf(false) }
     var value by remember { mutableStateOf("") }
@@ -39,9 +39,10 @@ fun MFAChallenge(
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceL),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceM),
     ) {
         Text(text = "MFA 認証", style = MaterialTheme.typography.displayMedium)
@@ -89,7 +90,10 @@ fun MFAChallenge(
         )
         FujuSecondaryButton(
             text = if (usingRecovery) "TOTP コードに戻る" else "リカバリコードで認証",
-            onClick = { usingRecovery = !usingRecovery; value = "" },
+            onClick = {
+                usingRecovery = !usingRecovery
+                value = ""
+            },
             enabled = !loading,
             modifier = Modifier.fillMaxWidth(),
         )

@@ -12,8 +12,7 @@ object Validators {
     private val EMAIL_RE = Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$""")
     private val PUBLIC_ID_RE = Regex("""^[a-zA-Z0-9]{4,16}$""")
 
-    fun validateEmail(value: String): ErrorCode? =
-        if (!EMAIL_RE.matches(value)) ErrorCode.EMAIL_INVALID else null
+    fun validateEmail(value: String): ErrorCode? = if (!EMAIL_RE.matches(value)) ErrorCode.EMAIL_INVALID else null
 
     fun validatePassword(value: String): ErrorCode? =
         if (value.length < PASSWORD_MIN_LENGTH) ErrorCode.PASSWORD_TOO_SHORT else null

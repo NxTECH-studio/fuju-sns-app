@@ -19,9 +19,10 @@ fun EmptyState(
     action: @Composable (() -> Unit)? = null,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceXL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceXL),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceM),
     ) {

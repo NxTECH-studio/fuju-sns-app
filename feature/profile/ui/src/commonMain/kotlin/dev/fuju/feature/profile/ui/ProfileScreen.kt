@@ -15,15 +15,23 @@ import dev.fuju.core.ui.theme.FujuDimens
  * シンプルなプロフィール画面。フォロー/フォロワー数の UI は次フェーズで拡張する。
  */
 @Composable
-fun ProfileHeader(user: ProfileUser, modifier: Modifier = Modifier) {
+fun ProfileHeader(
+    user: ProfileUser,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceL),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceS),
     ) {
         Text(user.displayName, style = MaterialTheme.typography.headlineMedium)
-        Text("@${user.displayId}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "@${user.displayId}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (user.bio.isNotBlank()) {
             Text(user.bio, style = MaterialTheme.typography.bodyLarge)
         }

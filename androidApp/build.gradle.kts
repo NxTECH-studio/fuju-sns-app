@@ -6,12 +6,21 @@ plugins {
 
 android {
     namespace = "dev.fuju.app"
-    compileSdk = libs.versions.android.compile.sdk.get().toInt()
+    compileSdk =
+        libs.versions.android.compile.sdk
+            .get()
+            .toInt()
 
     defaultConfig {
         applicationId = "dev.fuju.app"
-        minSdk = libs.versions.android.min.sdk.get().toInt()
-        targetSdk = libs.versions.android.target.sdk.get().toInt()
+        minSdk =
+            libs.versions.android.min.sdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.android.target.sdk
+                .get()
+                .toInt()
         versionCode = 1
         versionName = "0.1.0"
     }

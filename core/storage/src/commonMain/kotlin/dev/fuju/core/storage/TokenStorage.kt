@@ -23,7 +23,10 @@ interface TokenStorage {
     fun currentToken(): Token?
 
     /** 新しいトークンと有効期限（epoch seconds）をセット。 */
-    suspend fun setToken(accessToken: String, expiresAtEpochSec: Long)
+    suspend fun setToken(
+        accessToken: String,
+        expiresAtEpochSec: Long,
+    )
 
     /** Token を消去する（logout など）。 */
     suspend fun clear()
@@ -46,7 +49,10 @@ class InMemoryTokenStorage : TokenStorage {
 
     override fun currentToken(): Token? = state.value
 
-    override suspend fun setToken(accessToken: String, expiresAtEpochSec: Long) {
+    override suspend fun setToken(
+        accessToken: String,
+        expiresAtEpochSec: Long,
+    ) {
         mutex.withLock {
             state.value = Token(accessToken, expiresAtEpochSec)
         }

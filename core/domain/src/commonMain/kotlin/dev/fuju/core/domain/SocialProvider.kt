@@ -23,14 +23,14 @@ enum class SocialProvider {
 
     /** `fuju://auth/callback/:provider` 等の URL path 部分に埋める。 */
     val slug: String
-        get() = when (this) {
-            GOOGLE -> "google"
-            TWITCH -> "twitch"
-            X -> "x"
-        }
+        get() =
+            when (this) {
+                GOOGLE -> "google"
+                TWITCH -> "twitch"
+                X -> "x"
+            }
 
     companion object {
-        fun fromSlug(value: String): SocialProvider? =
-            entries.firstOrNull { it.slug == value.lowercase() }
+        fun fromSlug(value: String): SocialProvider? = entries.firstOrNull { it.slug == value.lowercase() }
     }
 }

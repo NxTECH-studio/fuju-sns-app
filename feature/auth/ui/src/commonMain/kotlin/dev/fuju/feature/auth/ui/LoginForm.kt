@@ -37,9 +37,9 @@ import kotlinx.coroutines.launch
 fun LoginForm(
     onLogin: suspend (identifier: String, password: String) -> LoginResult,
     onLoginWithSocial: (SocialProvider) -> Unit,
+    modifier: Modifier = Modifier,
     providers: List<SocialProvider> = emptyList(),
     onRegisterClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -49,9 +49,10 @@ fun LoginForm(
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceL),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceM),
     ) {
         Text(
@@ -132,8 +133,9 @@ fun LoginForm(
     }
 }
 
-internal fun providerLabel(provider: SocialProvider): String = when (provider) {
-    SocialProvider.GOOGLE -> "Google"
-    SocialProvider.TWITCH -> "Twitch"
-    SocialProvider.X -> "X"
-}
+internal fun providerLabel(provider: SocialProvider): String =
+    when (provider) {
+        SocialProvider.GOOGLE -> "Google"
+        SocialProvider.TWITCH -> "Twitch"
+        SocialProvider.X -> "X"
+    }

@@ -16,15 +16,16 @@ class BearerTokenPluginConfig {
     var getToken: () -> String? = { null }
 }
 
-val BearerTokenPlugin = createClientPlugin(
-    name = "FujuBearerToken",
-    createConfiguration = ::BearerTokenPluginConfig,
-) {
-    val tokenProvider = pluginConfig.getToken
-    onRequest { request, _ ->
-        val token = tokenProvider()
-        if (token != null && !request.headers.contains(HttpHeaders.Authorization)) {
-            request.header(HttpHeaders.Authorization, "Bearer $token")
+val BearerTokenPlugin =
+    createClientPlugin(
+        name = "FujuBearerToken",
+        createConfiguration = ::BearerTokenPluginConfig,
+    ) {
+        val tokenProvider = pluginConfig.getToken
+        onRequest { request, _ ->
+            val token = tokenProvider()
+            if (token != null && !request.headers.contains(HttpHeaders.Authorization)) {
+                request.header(HttpHeaders.Authorization, "Bearer $token")
+            }
         }
     }
-}

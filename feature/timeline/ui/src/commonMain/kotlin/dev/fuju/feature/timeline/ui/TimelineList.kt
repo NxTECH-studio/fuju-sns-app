@@ -32,11 +32,16 @@ fun TimelineList(
 }
 
 @Composable
-fun PostCard(post: Post, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PostCard(
+    post: Post,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceL),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceS),
     ) {
         Text(

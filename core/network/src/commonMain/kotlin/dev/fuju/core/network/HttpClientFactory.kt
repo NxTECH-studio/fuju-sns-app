@@ -9,7 +9,6 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.DEFAULT
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -42,14 +41,20 @@ class FujuHttpClientFactory(
      * [baseURL] をデフォルト URL として持つ HttpClient を作る。
      * AuthCore 用 / Backend 用で別インスタンスを作ることを想定。
      */
-    fun create(baseURL: String, enableBearer: Boolean): HttpClient {
+    fun create(
+        baseURL: String,
+        enableBearer: Boolean,
+    ): HttpClient {
         val normalizedBase = baseURL.trimEnd('/')
         return HttpClient(engineFactory) {
             installCommon(normalizedBase, enableBearer)
         }
     }
 
-    private fun HttpClientConfig<*>.installCommon(baseURL: String, enableBearer: Boolean) {
+    private fun HttpClientConfig<*>.installCommon(
+        baseURL: String,
+        enableBearer: Boolean,
+    ) {
         install(ContentNegotiation) {
             json(jsonFormat)
         }
@@ -80,12 +85,13 @@ class FujuHttpClientFactory(
 
     companion object {
         /** プロジェクト共通の JSON 構成。snake_case は serializer 側で個別マッピング。 */
-        val jsonFormat: Json = Json {
-            ignoreUnknownKeys = true
-            encodeDefaults = false
-            explicitNulls = false
-            prettyPrint = false
-        }
+        val jsonFormat: Json =
+            Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = false
+                explicitNulls = false
+                prettyPrint = false
+            }
     }
 }
 

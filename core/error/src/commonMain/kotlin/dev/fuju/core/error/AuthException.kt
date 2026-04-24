@@ -13,7 +13,6 @@ class AuthException(
     val retryAfterSec: Int? = null,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause) {
-
     companion object {
         /** network blip 相当の未知エラーを [ErrorCode.NETWORK_ERROR] + status=0 で包む。 */
         fun network(cause: Throwable?): AuthException =
@@ -24,7 +23,12 @@ class AuthException(
                 cause = cause,
             )
 
-        fun from(status: Int, wireCode: String?, message: String?, retryAfterSec: Int? = null): AuthException =
+        fun from(
+            status: Int,
+            wireCode: String?,
+            message: String?,
+            retryAfterSec: Int? = null,
+        ): AuthException =
             AuthException(
                 code = ErrorCode.fromWireOrUnknown(wireCode),
                 status = status,

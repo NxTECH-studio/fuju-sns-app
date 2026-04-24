@@ -3,8 +3,10 @@ package dev.fuju.core.network
 import dev.fuju.core.error.AuthException
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.discard
 
 /**
  * 2xx 以外なら [AuthException] に変換して throw する。
@@ -20,6 +22,19 @@ suspend fun HttpResponse.throwIfError() {
         message = payload?.message ?: status.description,
         retryAfterSec = retryAfter,
     )
+}
+
+/**
+ * ボディを使わない fire-and-forget 系呼び出し用。
+ * 2xx 以外なら [AuthException] を throw し、成功時はボディを discard して
+ * コネクションを確実に返す。未読のままにすると OkHttp エンジンでコネクションが
+ * プールに戻らず、最悪タイムアウトまで占有する。
+ */
+suspend fun HttpResponse.throwIfErrorOrDiscard() {
+    throwIfError()
+    if (status != HttpStatusCode.NoContent) {
+        bodyAsChannel().discard()
+    }
 }
 
 private fun defaultWireCode(status: HttpStatusCode): String = "HTTP_${status.value}"

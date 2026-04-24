@@ -42,4 +42,9 @@ final class IOSAppSession: ObservableObject {
             verboseLogging: true
         )
     }
+
+    deinit {
+        // Ktor HttpClient / AuthStateMachine の coroutine scope を確実に閉じる。
+        container.close()
+    }
 }

@@ -11,9 +11,23 @@ import dev.fuju.core.domain.UpdateBadgeInput
  */
 interface AdminRepository {
     suspend fun listBadges(): List<Badge>
+
     suspend fun createBadge(input: CreateBadgeInput): Badge
-    suspend fun updateBadge(id: String, input: UpdateBadgeInput): Badge
+
+    suspend fun updateBadge(
+        id: String,
+        input: UpdateBadgeInput,
+    ): Badge
+
     suspend fun deleteBadge(id: String)
-    suspend fun grantBadge(userSub: String, input: GrantBadgeInput)
-    suspend fun revokeBadge(userSub: String, badgeKey: String)
+
+    suspend fun grantBadge(
+        userSub: String,
+        input: GrantBadgeInput,
+    )
+
+    suspend fun revokeBadge(
+        userSub: String,
+        badgeKey: String,
+    )
 }

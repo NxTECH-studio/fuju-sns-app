@@ -4,9 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 
@@ -19,7 +17,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
  * - saveable にする余地（Bundle 保存）は未導入。再起動時は Login へ戻る。
  */
 @Stable
-class Navigator(initial: FujuDestination) {
+class Navigator(
+    initial: FujuDestination,
+) {
     private val backstack: SnapshotStateList<FujuDestination> = mutableStateListOf(initial)
 
     val current: FujuDestination get() = backstack.last()
@@ -43,5 +43,4 @@ class Navigator(initial: FujuDestination) {
 }
 
 @Composable
-fun rememberNavigator(initial: FujuDestination): Navigator =
-    remember { Navigator(initial) }
+fun rememberNavigator(initial: FujuDestination): Navigator = remember { Navigator(initial) }

@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ErrorCodeTest {
-
     @Test
     fun knownWireCodeMapsBack() {
         assertEquals(ErrorCode.INVALID_CREDENTIALS, ErrorCode.fromWireOrUnknown("INVALID_CREDENTIALS"))

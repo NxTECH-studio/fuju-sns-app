@@ -37,6 +37,7 @@ class AuthStateMachine(
     val state: StateFlow<AuthSnapshot> = _state.asStateFlow()
 
     private val refreshMutex = Mutex()
+    private val loginMutex = Mutex()
     private var refreshJob: Job? = null
     private var accessExpEpochSec: Long? = null
     private var preToken: String? = null
@@ -96,57 +97,79 @@ class AuthStateMachine(
     }
 
     // --- Login ---
-    suspend fun login(identifier: String, password: String): LoginResult {
-        update(status = AuthStatus.Authenticating, error = null)
-        try {
-            val res = actions.login(identifier, password)
-            if (res.mfaRequired) {
-                preToken = res.preToken
-                update(status = AuthStatus.MFARequired, preTokenPresent = true, mfaAttempts = 0, error = null)
-                return LoginResult.MFARequired
+    // loginMutex で login / verifyMFA を直列化し、preToken と accessExpEpochSec の
+    // 書き換えが同時実行で取り違えられないようにする。
+    suspend fun login(
+        identifier: String,
+        password: String,
+    ): LoginResult =
+        loginMutex.withLock {
+            update(status = AuthStatus.Authenticating, error = null)
+            try {
+                val res = actions.login(identifier, password)
+                if (res.mfaRequired) {
+                    preToken = res.preToken
+                    update(
+                        status = AuthStatus.MFARequired,
+                        preTokenPresent = true,
+                        mfaAttempts = 0,
+                        error = null,
+                    )
+                    return@withLock LoginResult.MFARequired
+                }
+                accessExpEpochSec = nowEpochSec() + res.expiresInSec
+                actions.storeAccessToken(res.accessToken!!, accessExpEpochSec!!)
+                val user = actions.loadProfile()
+                update(status = AuthStatus.Authenticated, user = user, error = null)
+                actions.writeSessionHint(user.id)
+                scheduleSilentRefresh()
+                LoginResult.Authenticated(user)
+            } catch (e: AuthException) {
+                update(
+                    status =
+                        if (_state.value.user != null) {
+                            AuthStatus.Authenticated
+                        } else {
+                            AuthStatus.Unauthenticated
+                        },
+                    error = e,
+                )
+                throw e
             }
-            accessExpEpochSec = nowEpochSec() + res.expiresInSec
-            actions.storeAccessToken(res.accessToken!!, accessExpEpochSec!!)
-            val user = actions.loadProfile()
-            update(status = AuthStatus.Authenticated, user = user, error = null)
-            actions.writeSessionHint(user.id)
-            scheduleSilentRefresh()
-            return LoginResult.Authenticated(user)
-        } catch (e: AuthException) {
-            update(
-                status = if (_state.value.user != null) AuthStatus.Authenticated else AuthStatus.Unauthenticated,
-                error = e,
-            )
-            throw e
         }
-    }
 
-    suspend fun verifyMFA(code: String? = null, recoveryCode: String? = null) {
-        val pt = preToken ?: throw AuthException(
-            code = ErrorCode.TOKEN_INVALID,
-            status = 401,
-            message = "no pre-token in scope",
-        )
-        try {
-            val res = actions.verifyMFA(pt, code, recoveryCode)
-            preToken = null
-            accessExpEpochSec = nowEpochSec() + res.expiresInSec
-            actions.storeAccessToken(res.accessToken, accessExpEpochSec!!)
-            val user = actions.loadProfile()
-            update(
-                status = AuthStatus.Authenticated,
-                user = user,
-                preTokenPresent = false,
-                mfaAttempts = 0,
-                error = null,
-            )
-            actions.writeSessionHint(user.id)
-            scheduleSilentRefresh()
-        } catch (e: AuthException) {
-            if (e.code == ErrorCode.TOTP_CODE_INVALID || e.code == ErrorCode.RECOVERY_CODE_INVALID) {
-                update(mfaAttempts = _state.value.mfaAttempts + 1)
+    suspend fun verifyMFA(
+        code: String? = null,
+        recoveryCode: String? = null,
+    ) {
+        loginMutex.withLock {
+            val pt =
+                preToken ?: throw AuthException(
+                    code = ErrorCode.TOKEN_INVALID,
+                    status = 401,
+                    message = "no pre-token in scope",
+                )
+            try {
+                val res = actions.verifyMFA(pt, code, recoveryCode)
+                preToken = null
+                accessExpEpochSec = nowEpochSec() + res.expiresInSec
+                actions.storeAccessToken(res.accessToken, accessExpEpochSec!!)
+                val user = actions.loadProfile()
+                update(
+                    status = AuthStatus.Authenticated,
+                    user = user,
+                    preTokenPresent = false,
+                    mfaAttempts = 0,
+                    error = null,
+                )
+                actions.writeSessionHint(user.id)
+                scheduleSilentRefresh()
+            } catch (e: AuthException) {
+                if (e.code == ErrorCode.TOTP_CODE_INVALID || e.code == ErrorCode.RECOVERY_CODE_INVALID) {
+                    update(mfaAttempts = _state.value.mfaAttempts + 1)
+                }
+                throw e
             }
-            throw e
         }
     }
 
@@ -163,8 +186,11 @@ class AuthStateMachine(
     }
 
     // --- Register ---
-    suspend fun register(email: String, password: String, publicId: String): User =
-        actions.register(email, password, publicId)
+    suspend fun register(
+        email: String,
+        password: String,
+        publicId: String,
+    ): User = actions.register(email, password, publicId)
 
     // --- Logout ---
     suspend fun logout() {
@@ -200,7 +226,9 @@ class AuthStateMachine(
                         return false
                     }
                 }
-                _state.value.user?.id?.let(actions::writeSessionHint)
+                _state.value.user
+                    ?.id
+                    ?.let(actions::writeSessionHint)
                 scheduleSilentRefresh()
                 true
             } catch (e: AuthException) {
@@ -222,6 +250,7 @@ class AuthStateMachine(
     }
 
     suspend fun setupMFA(): MFASetupResult = actions.setupMFA()
+
     suspend fun enableMFA(code: String): User {
         val user = actions.enableMFA(code)
         update(user = user)
@@ -235,10 +264,16 @@ class AuthStateMachine(
     }
 
     // --- Social ---
-    fun buildSocialConnectURL(provider: SocialProvider, redirectURI: String): String =
-        actions.buildConnectURL(provider, redirectURI)
+    fun buildSocialConnectURL(
+        provider: SocialProvider,
+        redirectURI: String,
+    ): String = actions.buildConnectURL(provider, redirectURI)
 
-    suspend fun completeSocialCallback(provider: SocialProvider, state: String, code: String): User {
+    suspend fun completeSocialCallback(
+        provider: SocialProvider,
+        state: String,
+        code: String,
+    ): User {
         val res = actions.socialCallback(provider, state, code)
         accessExpEpochSec = nowEpochSec() + res.expiresInSec
         actions.storeAccessToken(res.accessToken, accessExpEpochSec!!)
@@ -265,14 +300,15 @@ class AuthStateMachine(
     ) {
         if (disposed) return
         val prev = _state.value
-        _state.value = prev.copy(
-            status = status ?: prev.status,
-            user = user,
-            preTokenPresent = preTokenPresent ?: prev.preTokenPresent,
-            error = error,
-            mfaAttempts = mfaAttempts ?: prev.mfaAttempts,
-            needsPublicIdSetup = needsPublicIdSetup ?: prev.needsPublicIdSetup,
-        )
+        _state.value =
+            prev.copy(
+                status = status ?: prev.status,
+                user = user,
+                preTokenPresent = preTokenPresent ?: prev.preTokenPresent,
+                error = error,
+                mfaAttempts = mfaAttempts ?: prev.mfaAttempts,
+                needsPublicIdSetup = needsPublicIdSetup ?: prev.needsPublicIdSetup,
+            )
     }
 
     private fun clearAll() {
@@ -287,10 +323,11 @@ class AuthStateMachine(
         val exp = accessExpEpochSec ?: return
         refreshJob?.cancel()
         val delaySec = (exp - nowEpochSec() - SILENT_REFRESH_LEAD_SEC).coerceAtLeast(MIN_SILENT_REFRESH_DELAY_SEC)
-        refreshJob = scope.launch {
-            delay(delaySec * 1000L)
-            refresh(RefreshCause.SILENT)
-        }
+        refreshJob =
+            scope.launch {
+                delay(delaySec * 1000L)
+                refresh(RefreshCause.SILENT)
+            }
     }
 
     private fun nowEpochSec(): Long = actions.nowEpochSec()
@@ -314,24 +351,61 @@ data class AuthConfig(
  * 本番では `:feature:auth:data` の `AuthRepository` が実装を提供する。
  */
 interface AuthActions {
-    suspend fun login(identifier: String, password: String): LoginResponse
-    suspend fun register(email: String, password: String, publicId: String): User
-    suspend fun logout()
-    suspend fun refresh(): RefreshResponse
-    suspend fun verifyMFA(preToken: String, code: String?, recoveryCode: String?): VerifyResponse
-    suspend fun loadProfile(): User
-    suspend fun updatePublicId(next: String): User
-    suspend fun setupMFA(): MFASetupResult
-    suspend fun enableMFA(code: String): User
-    suspend fun disableMFA(code: String): User
-    fun buildConnectURL(provider: SocialProvider, redirectURI: String): String
-    suspend fun socialCallback(provider: SocialProvider, state: String, code: String): VerifyResponse
+    suspend fun login(
+        identifier: String,
+        password: String,
+    ): LoginResponse
 
-    suspend fun storeAccessToken(token: String, expiresAtEpochSec: Long)
+    suspend fun register(
+        email: String,
+        password: String,
+        publicId: String,
+    ): User
+
+    suspend fun logout()
+
+    suspend fun refresh(): RefreshResponse
+
+    suspend fun verifyMFA(
+        preToken: String,
+        code: String?,
+        recoveryCode: String?,
+    ): VerifyResponse
+
+    suspend fun loadProfile(): User
+
+    suspend fun updatePublicId(next: String): User
+
+    suspend fun setupMFA(): MFASetupResult
+
+    suspend fun enableMFA(code: String): User
+
+    suspend fun disableMFA(code: String): User
+
+    fun buildConnectURL(
+        provider: SocialProvider,
+        redirectURI: String,
+    ): String
+
+    suspend fun socialCallback(
+        provider: SocialProvider,
+        state: String,
+        code: String,
+    ): VerifyResponse
+
+    suspend fun storeAccessToken(
+        token: String,
+        expiresAtEpochSec: Long,
+    )
+
     fun readSessionHint(): String?
+
     fun writeSessionHint(userId: String)
+
     fun clearSessionHint()
+
     fun isNewSocialUser(userId: String): Boolean
+
     fun nowEpochSec(): Long
 }
 
@@ -345,5 +419,12 @@ data class LoginResponse(
     val expiresInSec: Long = 0L,
 )
 
-data class RefreshResponse(val accessToken: String, val expiresInSec: Long)
-data class VerifyResponse(val accessToken: String, val expiresInSec: Long)
+data class RefreshResponse(
+    val accessToken: String,
+    val expiresInSec: Long,
+)
+
+data class VerifyResponse(
+    val accessToken: String,
+    val expiresInSec: Long,
+)

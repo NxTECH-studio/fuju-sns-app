@@ -26,9 +26,15 @@ kotlin {
 
 android {
     namespace = "dev.fuju.core.domain"
-    compileSdk = libs.versions.android.compile.sdk.get().toInt()
+    compileSdk =
+        libs.versions.android.compile.sdk
+            .get()
+            .toInt()
     defaultConfig {
-        minSdk = libs.versions.android.min.sdk.get().toInt()
+        minSdk =
+            libs.versions.android.min.sdk
+                .get()
+                .toInt()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

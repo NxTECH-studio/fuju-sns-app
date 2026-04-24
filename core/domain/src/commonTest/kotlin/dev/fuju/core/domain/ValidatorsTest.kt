@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ValidatorsTest {
-
     @Test
     fun emailAcceptsNormalAddress() {
         assertNull(Validators.validateEmail("alice@example.com"))

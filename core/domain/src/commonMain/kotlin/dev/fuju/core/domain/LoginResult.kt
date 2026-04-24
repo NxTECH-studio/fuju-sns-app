@@ -6,7 +6,10 @@ package dev.fuju.core.domain
  * - パスワード正解 & MFA 設定済 → [MFARequired]（pre_token 取得済み）
  */
 sealed class LoginResult {
-    data class Authenticated(val user: User) : LoginResult()
+    data class Authenticated(
+        val user: User,
+    ) : LoginResult()
+
     data object MFARequired : LoginResult()
 }
 

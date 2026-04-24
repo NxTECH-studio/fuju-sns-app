@@ -16,9 +16,24 @@ plugins {
 // ルートでは全サブプロジェクトに lint / format を強制する。
 // 設定値は :core / :feature 配下でも一貫させるため allprojects で束ねる。
 allprojects {
-    apply(plugin = rootProject.libs.plugins.ktlint.get().pluginId)
-    apply(plugin = rootProject.libs.plugins.detekt.get().pluginId)
-    apply(plugin = rootProject.libs.plugins.spotless.get().pluginId)
+    apply(
+        plugin =
+            rootProject.libs.plugins.ktlint
+                .get()
+                .pluginId,
+    )
+    apply(
+        plugin =
+            rootProject.libs.plugins.detekt
+                .get()
+                .pluginId,
+    )
+    apply(
+        plugin =
+            rootProject.libs.plugins.spotless
+                .get()
+                .pluginId,
+    )
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         version.set("1.5.0")

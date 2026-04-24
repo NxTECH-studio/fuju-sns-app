@@ -1,12 +1,12 @@
 package dev.fuju.feature.profile.data
 
-import dev.fuju.core.domain.Badge
 import dev.fuju.core.domain.FollowResult
 import dev.fuju.core.domain.Me
 import dev.fuju.core.domain.ProfileUser
 import dev.fuju.core.domain.UpdateProfileInput
-import dev.fuju.core.error.toAuthException
+import dev.fuju.core.network.dto.BadgeDto
 import dev.fuju.core.network.throwIfError
+import dev.fuju.core.network.wrapAsAuthException
 import dev.fuju.feature.profile.domain.ProfileRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -21,76 +21,96 @@ import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-class ProfileRepositoryImpl(private val client: HttpClient) : ProfileRepository {
-
-    override suspend fun getMe(): Me = wrap {
-        val dto: MeDto = client.get("/me").also { it.throwIfError() }.body()
-        dto.toDomain()
-    }
-
-    override suspend fun listUsers(limit: Int, offset: Int): List<ProfileUser> = wrap {
-        val list: List<UserDto> = client.get("/users") {
-            parameter("limit", limit); parameter("offset", offset)
-        }.also { it.throwIfError() }.body()
-        list.map { it.toDomain() }
-    }
-
-    override suspend fun getUser(sub: String): ProfileUser = wrap {
-        val dto: UserDto = client.get("/users/$sub").also { it.throwIfError() }.body()
-        dto.toDomain()
-    }
-
-    override suspend fun updateUser(sub: String, input: UpdateProfileInput): ProfileUser = wrap {
-        val dto: UserDto = client.put("/users/$sub") {
-            contentType(ContentType.Application.Json)
-            setBody(UpdateProfileDto(bio = input.bio, bannerUrl = input.bannerUrl))
-        }.also { it.throwIfError() }.body()
-        dto.toDomain()
-    }
-
-    override suspend fun follow(sub: String): FollowResult = wrap {
-        val dto: FollowResultDto = client.post("/users/$sub/follow").also { it.throwIfError() }.body()
-        FollowResult(dto.following, dto.followersCount)
-    }
-
-    override suspend fun unfollow(sub: String): FollowResult = wrap {
-        val dto: FollowResultDto = client.delete("/users/$sub/follow").also { it.throwIfError() }.body()
-        FollowResult(dto.following, dto.followersCount)
-    }
-
-    override suspend fun followers(sub: String, limit: Int, offset: Int): List<ProfileUser> = wrap {
-        val list: List<UserDto> = client.get("/users/$sub/followers") {
-            parameter("limit", limit); parameter("offset", offset)
-        }.also { it.throwIfError() }.body()
-        list.map { it.toDomain() }
-    }
-
-    override suspend fun following(sub: String, limit: Int, offset: Int): List<ProfileUser> = wrap {
-        val list: List<UserDto> = client.get("/users/$sub/following") {
-            parameter("limit", limit); parameter("offset", offset)
-        }.also { it.throwIfError() }.body()
-        list.map { it.toDomain() }
-    }
-
-    private inline fun <T> wrap(block: () -> T): T =
-        try {
-            block()
-        } catch (t: Throwable) {
-            throw t.toAuthException()
+class ProfileRepositoryImpl(
+    private val client: HttpClient,
+) : ProfileRepository {
+    override suspend fun getMe(): Me =
+        wrap {
+            val dto: MeDto = client.get("/me").also { it.throwIfError() }.body()
+            dto.toDomain()
         }
-}
 
-@Serializable
-internal data class BadgeDto(
-    val id: String,
-    val key: String,
-    val label: String,
-    val description: String = "",
-    @SerialName("icon_url") val iconUrl: String = "",
-    val color: String,
-    val priority: Int,
-) {
-    fun toDomain(): Badge = Badge(id, key, label, description, iconUrl, color, priority)
+    override suspend fun listUsers(
+        limit: Int,
+        offset: Int,
+    ): List<ProfileUser> =
+        wrap {
+            val list: List<UserDto> =
+                client
+                    .get("/users") {
+                        parameter("limit", limit)
+                        parameter("offset", offset)
+                    }.also { it.throwIfError() }
+                    .body()
+            list.map { it.toDomain() }
+        }
+
+    override suspend fun getUser(sub: String): ProfileUser =
+        wrap {
+            val dto: UserDto = client.get("/users/$sub").also { it.throwIfError() }.body()
+            dto.toDomain()
+        }
+
+    override suspend fun updateUser(
+        sub: String,
+        input: UpdateProfileInput,
+    ): ProfileUser =
+        wrap {
+            val dto: UserDto =
+                client
+                    .put("/users/$sub") {
+                        contentType(ContentType.Application.Json)
+                        setBody(UpdateProfileDto(bio = input.bio, bannerUrl = input.bannerUrl))
+                    }.also { it.throwIfError() }
+                    .body()
+            dto.toDomain()
+        }
+
+    override suspend fun follow(sub: String): FollowResult =
+        wrap {
+            val dto: FollowResultDto = client.post("/users/$sub/follow").also { it.throwIfError() }.body()
+            FollowResult(dto.following, dto.followersCount)
+        }
+
+    override suspend fun unfollow(sub: String): FollowResult =
+        wrap {
+            val dto: FollowResultDto = client.delete("/users/$sub/follow").also { it.throwIfError() }.body()
+            FollowResult(dto.following, dto.followersCount)
+        }
+
+    override suspend fun followers(
+        sub: String,
+        limit: Int,
+        offset: Int,
+    ): List<ProfileUser> =
+        wrap {
+            val list: List<UserDto> =
+                client
+                    .get("/users/$sub/followers") {
+                        parameter("limit", limit)
+                        parameter("offset", offset)
+                    }.also { it.throwIfError() }
+                    .body()
+            list.map { it.toDomain() }
+        }
+
+    override suspend fun following(
+        sub: String,
+        limit: Int,
+        offset: Int,
+    ): List<ProfileUser> =
+        wrap {
+            val list: List<UserDto> =
+                client
+                    .get("/users/$sub/following") {
+                        parameter("limit", limit)
+                        parameter("offset", offset)
+                    }.also { it.throwIfError() }
+                    .body()
+            list.map { it.toDomain() }
+        }
+
+    private inline fun <T> wrap(block: () -> T): T = wrapAsAuthException(block)
 }
 
 @Serializable
@@ -105,17 +125,18 @@ internal data class UserDto(
     @SerialName("created_at") val createdAt: String,
     @SerialName("profile_refreshed_at") val profileRefreshedAt: String,
 ) {
-    fun toDomain(): ProfileUser = ProfileUser(
-        sub = sub,
-        displayName = displayName,
-        displayId = displayId,
-        iconUrl = iconUrl,
-        bio = bio,
-        bannerUrl = bannerUrl,
-        badges = badges.map { it.toDomain() },
-        createdAt = createdAt,
-        profileRefreshedAt = profileRefreshedAt,
-    )
+    fun toDomain(): ProfileUser =
+        ProfileUser(
+            sub = sub,
+            displayName = displayName,
+            displayId = displayId,
+            iconUrl = iconUrl,
+            bio = bio,
+            bannerUrl = bannerUrl,
+            badges = badges.map { it.toDomain() },
+            createdAt = createdAt,
+            profileRefreshedAt = profileRefreshedAt,
+        )
 }
 
 @Serializable
@@ -131,18 +152,19 @@ internal data class MeDto(
     @SerialName("profile_refreshed_at") val profileRefreshedAt: String,
     @SerialName("is_admin") val isAdmin: Boolean,
 ) {
-    fun toDomain(): Me = Me(
-        sub = sub,
-        displayName = displayName,
-        displayId = displayId,
-        iconUrl = iconUrl,
-        bio = bio,
-        bannerUrl = bannerUrl,
-        badges = badges.map { it.toDomain() },
-        createdAt = createdAt,
-        profileRefreshedAt = profileRefreshedAt,
-        isAdmin = isAdmin,
-    )
+    fun toDomain(): Me =
+        Me(
+            sub = sub,
+            displayName = displayName,
+            displayId = displayId,
+            iconUrl = iconUrl,
+            bio = bio,
+            bannerUrl = bannerUrl,
+            badges = badges.map { it.toDomain() },
+            createdAt = createdAt,
+            profileRefreshedAt = profileRefreshedAt,
+            isAdmin = isAdmin,
+        )
 }
 
 @Serializable

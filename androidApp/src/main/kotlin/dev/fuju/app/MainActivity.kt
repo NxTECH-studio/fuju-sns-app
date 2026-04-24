@@ -8,17 +8,17 @@ import dev.fuju.composeApp.ComposeAppRoot
 import dev.fuju.composeApp.di.AppContainer
 
 class MainActivity : ComponentActivity() {
-
     private lateinit var container: AppContainer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        container = AppContainer(
-            authCoreBaseUrl = BuildConfig.AUTH_CORE_BASE_URL,
-            fujuApiBaseUrl = BuildConfig.FUJU_API_BASE_URL,
-            verboseLogging = BuildConfig.DEBUG,
-        )
+        container =
+            AppContainer(
+                authCoreBaseUrl = BuildConfig.AUTH_CORE_BASE_URL,
+                fujuApiBaseUrl = BuildConfig.FUJU_API_BASE_URL,
+                verboseLogging = BuildConfig.DEBUG,
+            )
 
         // Deep link (OAuth callback) があればバスに流す。本番では state / code を取り出して
         // AuthStateMachine.completeSocialCallback に渡す。
@@ -32,6 +32,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.handleOAuthCallback()
+    }
+
+    override fun onDestroy() {
+        if (::container.isInitialized) {
+            container.close()
+        }
+        super.onDestroy()
     }
 
     private fun Intent.handleOAuthCallback() {

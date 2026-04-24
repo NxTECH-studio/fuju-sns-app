@@ -26,16 +26,17 @@ fun FujuTheme(
     )
 }
 
-private fun fujuTypography(): Typography = Typography(
-    displayLarge = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold),
-    displayMedium = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.SemiBold),
-    headlineLarge = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
-    headlineMedium = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium),
-    titleLarge = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
-    bodyLarge = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
-    bodyMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal),
-    bodySmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal),
-    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
-)
+private fun fujuTypography(): Typography =
+    Typography(
+        displayLarge = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold),
+        displayMedium = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.SemiBold),
+        headlineLarge = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
+        headlineMedium = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium),
+        titleLarge = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+        titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+        bodyLarge = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
+        bodyMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal),
+        bodySmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal),
+        labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+        labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+    )

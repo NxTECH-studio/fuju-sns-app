@@ -6,7 +6,9 @@ package dev.fuju.core.error
  *
  * wire format は string code（`enum.name` と同じ）。不明な code は [UNKNOWN] に寄せる。
  */
-enum class ErrorCode(val wire: String) {
+enum class ErrorCode(
+    val wire: String,
+) {
     INVALID_CREDENTIALS("INVALID_CREDENTIALS"),
     USER_ALREADY_EXISTS("USER_ALREADY_EXISTS"),
     USER_NOT_FOUND("USER_NOT_FOUND"),

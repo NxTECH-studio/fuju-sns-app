@@ -27,9 +27,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegisterForm(
     onRegister: suspend (email: String, password: String, publicId: String) -> User,
+    modifier: Modifier = Modifier,
     onSuccess: (User) -> Unit = {},
     onLoginClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -42,9 +42,10 @@ fun RegisterForm(
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(FujuDimens.SpaceL),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(FujuDimens.SpaceL),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceM),
     ) {
         Text(text = "新規登録", style = MaterialTheme.typography.displayMedium)
@@ -80,11 +81,12 @@ fun RegisterForm(
                 idErr = null
             },
             enabled = !loading,
-            error = when (idErr) {
-                ErrorCode.PUBLIC_ID_RESERVED -> "指定した ID は利用できません。"
-                ErrorCode.PUBLIC_ID_FORMAT_INVALID -> "4〜16 文字の英数字で指定してください。"
-                else -> null
-            },
+            error =
+                when (idErr) {
+                    ErrorCode.PUBLIC_ID_RESERVED -> "指定した ID は利用できません。"
+                    ErrorCode.PUBLIC_ID_FORMAT_INVALID -> "4〜16 文字の英数字で指定してください。"
+                    else -> null
+                },
             modifier = Modifier.fillMaxWidth(),
         )
         val serverMessage = AuthErrorMessages.toMessage(serverErr)

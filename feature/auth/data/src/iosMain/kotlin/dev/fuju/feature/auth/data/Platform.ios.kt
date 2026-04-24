@@ -7,7 +7,6 @@ import platform.Foundation.NSString
 import platform.Foundation.URLQueryAllowedCharacterSet
 import platform.Foundation.stringByAddingPercentEncodingWithAllowedCharacters
 import platform.Foundation.timeIntervalSince1970
-import platform.Foundation.create
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nowSeconds(): Long = NSDate().timeIntervalSince1970.toLong()

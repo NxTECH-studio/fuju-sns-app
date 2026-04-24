@@ -61,15 +61,17 @@ fun ComposeAppRoot(
             when (snapshot.status) {
                 AuthStatus.Idle, AuthStatus.Authenticating -> LoadingScreen()
                 AuthStatus.Error -> ErrorScreen(message = AuthErrorMessages.toMessage(snapshot.error) ?: "エラーが発生しました")
-                AuthStatus.MFARequired -> MFAChallenge(
-                    onVerify = { code, rc -> deps.authStateMachine.verifyMFA(code, rc) },
-                    onCancel = { deps.authStateMachine.cancelMFA() },
-                    attempts = snapshot.mfaAttempts,
-                )
-                AuthStatus.Unauthenticated -> LoginForm(
-                    onLogin = { id, pw -> deps.authStateMachine.login(id, pw) },
-                    onLoginWithSocial = { /* フェーズ 2 end */ },
-                )
+                AuthStatus.MFARequired ->
+                    MFAChallenge(
+                        onVerify = { code, rc -> deps.authStateMachine.verifyMFA(code, rc) },
+                        onCancel = { deps.authStateMachine.cancelMFA() },
+                        attempts = snapshot.mfaAttempts,
+                    )
+                AuthStatus.Unauthenticated ->
+                    LoginForm(
+                        onLogin = { id, pw -> deps.authStateMachine.login(id, pw) },
+                        onLoginWithSocial = { /* フェーズ 2 end */ },
+                    )
                 AuthStatus.Authenticated -> AuthenticatedScreen(deps, destination) { destination = it }
             }
         }

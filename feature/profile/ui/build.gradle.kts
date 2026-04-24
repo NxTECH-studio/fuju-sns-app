@@ -27,8 +27,16 @@ kotlin {
 
 android {
     namespace = "dev.fuju.feature.profile.ui"
-    compileSdk = libs.versions.android.compile.sdk.get().toInt()
-    defaultConfig { minSdk = libs.versions.android.min.sdk.get().toInt() }
+    compileSdk =
+        libs.versions.android.compile.sdk
+            .get()
+            .toInt()
+    defaultConfig {
+        minSdk =
+            libs.versions.android.min.sdk
+                .get()
+                .toInt()
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

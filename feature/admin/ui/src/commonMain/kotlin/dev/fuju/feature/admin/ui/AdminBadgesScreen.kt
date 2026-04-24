@@ -15,13 +15,17 @@ import dev.fuju.core.domain.Badge
 import dev.fuju.core.ui.theme.FujuDimens
 
 @Composable
-fun AdminBadgesList(badges: List<Badge>, modifier: Modifier = Modifier) {
+fun AdminBadgesList(
+    badges: List<Badge>,
+    modifier: Modifier = Modifier,
+) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         items(badges, key = { it.id }) { badge ->
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(FujuDimens.SpaceL),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(FujuDimens.SpaceL),
                 verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceXS),
             ) {
                 Text(badge.label, style = MaterialTheme.typography.titleMedium)

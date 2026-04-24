@@ -22,18 +22,20 @@ fun FujuToast(
     kind: ToastKind,
     modifier: Modifier = Modifier,
 ) {
-    val bg = when (kind) {
-        ToastKind.INFO -> FujuColors.Ink700
-        ToastKind.SUCCESS -> FujuColors.Positive500
-        ToastKind.ERROR -> FujuColors.Danger500
-    }
+    val bg =
+        when (kind) {
+            ToastKind.INFO -> FujuColors.Ink700
+            ToastKind.SUCCESS -> FujuColors.Positive500
+            ToastKind.ERROR -> FujuColors.Danger500
+        }
     Text(
         text = message,
         color = MaterialTheme.colorScheme.surface,
         style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier
-            .clip(RoundedCornerShape(FujuDimens.RadiusM))
-            .background(bg)
-            .padding(horizontal = FujuDimens.SpaceL, vertical = FujuDimens.SpaceM),
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(FujuDimens.RadiusM))
+                .background(bg)
+                .padding(horizontal = FujuDimens.SpaceL, vertical = FujuDimens.SpaceM),
     )
 }

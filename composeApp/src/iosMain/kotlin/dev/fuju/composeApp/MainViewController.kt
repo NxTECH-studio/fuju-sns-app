@@ -9,6 +9,7 @@ import platform.UIKit.UIViewController
  * iosApp (SwiftUI) 側では `ComposeMainViewControllerFactoryKt.MainViewController(container:)`
  * として呼び出す。
  */
-fun MainViewController(container: AppContainer): UIViewController = ComposeUIViewController {
-    ComposeAppRoot(deps = container.asAppDependencies())
-}
+fun MainViewController(container: AppContainer): UIViewController =
+    ComposeUIViewController {
+        ComposeAppRoot(deps = container.asAppDependencies())
+    }

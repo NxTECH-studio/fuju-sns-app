@@ -64,9 +64,14 @@ data class MFARegisterResponseDto(
 )
 
 @Serializable
-data class EnableMFARequestDto(val code: String)
+data class EnableMFARequestDto(
+    val code: String,
+)
+
 @Serializable
-data class DisableMFARequestDto(val code: String)
+data class DisableMFARequestDto(
+    val code: String,
+)
 
 @Serializable
 data class SocialCallbackRequestDto(
