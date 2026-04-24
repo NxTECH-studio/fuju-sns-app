@@ -7,7 +7,8 @@ build/
 out/
 
 # IDE - IntelliJ / Android Studio
-.idea/
+.idea/*
+!.idea/runConfigurations/
 *.iml
 *.ipr
 *.iws

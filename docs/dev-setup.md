@@ -34,7 +34,17 @@ app/
 2. Android Studio Panda3 を起動し、`Open...` で `/.../fuju/app/` を選ぶ。
 3. Gradle sync を待つ（プラグイン / Gradle 9.3 の自動ダウンロード）。
 4. `local.properties` に Android SDK パスが自動記入されていることを確認。
-5. Run/Debug 構成に `androidApp` / `composeApp` が表示される。
+5. Run/Debug 構成プルダウンに **`androidApp [dev]`** が表示される
+   （`.idea/runConfigurations/` に commit 済み）。
+6. 左側の **Build Variants** パネルで `androidApp` の Active Build Variant を
+   `devDebug` に設定する（初期値は `stagingDebug` や `prodDebug` になる場合がある）。
+
+### Run ボタンがグレーアウトする場合
+
+- Gradle sync が完了していない → `Sync Project with Gradle Files` を再実行
+- `androidApp [dev]` の `module name="fuju-app.androidApp.main"` が合わない場合は
+  一度削除して Android Studio が自動生成する run config を利用する
+- Android SDK が `local.properties` に未設定 → `File → Project Structure → SDK Location` で設定
 
 ## よく使うコマンド
 
