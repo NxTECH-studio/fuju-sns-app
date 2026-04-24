@@ -1,5 +1,3 @@
-import org.jetbrains.compose.ExperimentalComposeLibrary
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
@@ -33,7 +31,6 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
-        @OptIn(ExperimentalComposeLibrary::class)
         androidUnitTest.dependencies {
             implementation(libs.junit)
             implementation(libs.robolectric)
@@ -41,7 +38,8 @@ kotlin {
             implementation(libs.roborazzi.compose)
             implementation(libs.roborazzi.rule)
             implementation(libs.androidx.test.ext.junit)
-            implementation(compose.uiTest)
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.androidx.compose.ui.test.manifest)
             implementation(compose.material3)
         }
     }

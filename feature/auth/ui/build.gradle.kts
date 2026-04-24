@@ -1,5 +1,3 @@
-import org.jetbrains.compose.ExperimentalComposeLibrary
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
@@ -33,7 +31,8 @@ kotlin {
         }
         // Roborazzi + Robolectric は Android SDK に依存するので androidUnitTest 限定で依存を入れる。
         // commonTest には入れられない（KMP の iOS ターゲットで解決できないため）。
-        @OptIn(ExperimentalComposeLibrary::class)
+        // compose.uiTest (JetBrains) は commonTest 向けの assertion API で `createComposeRule()`
+        // は提供しない。Android の JUnit4 統合には androidx.compose.ui:ui-test-junit4 が必要。
         androidUnitTest.dependencies {
             implementation(libs.junit)
             implementation(libs.robolectric)
@@ -41,7 +40,8 @@ kotlin {
             implementation(libs.roborazzi.compose)
             implementation(libs.roborazzi.rule)
             implementation(libs.androidx.test.ext.junit)
-            implementation(compose.uiTest)
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.androidx.compose.ui.test.manifest)
             implementation(compose.material3)
         }
     }
