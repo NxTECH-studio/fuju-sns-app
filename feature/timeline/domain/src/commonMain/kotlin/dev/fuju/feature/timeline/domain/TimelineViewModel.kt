@@ -1,13 +1,13 @@
 package dev.fuju.feature.timeline.domain
 
 import dev.fuju.core.domain.Post
-import dev.fuju.core.error.AuthException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -26,9 +26,9 @@ import kotlinx.coroutines.launch
  * - delete は items から除去（楽観的ではなく成功後に適用）
  *
  * ## 並列リクエストの扱い
- * React 版の `AbortController` に相当する厳密な cancel は実装していない。同じ画面内で
- * 競合する並列リクエストが発生した場合、最後に返ったレスポンスが勝つ。代わりに
- * `loadJob` / `loadMoreJob` を cancel して二重起動を防ぐ。
+ * `loadJob` / `loadMoreJob` / `likeJobs[postId]` を cancel して二重起動を防ぐ。
+ * state 更新は `MutableStateFlow.update { it.copy(...) }` でアトミックに read-modify-write
+ * するため、同時に走っても lost update にはならない。
  */
 class TimelineViewModel(
     private val repository: TimelineRepository,
@@ -42,23 +42,26 @@ class TimelineViewModel(
     private var loadJob: Job? = null
     private var loadMoreJob: Job? = null
 
+    // 同じ post を素早く複数回 tap した時に optimistic snapshot が競合しないよう、
+    // post 単位で進行中の like Job を 1 本に絞る。
+    private val likeJobs = mutableMapOf<String, Job>()
+
     init {
         refresh()
     }
 
     /**
      * 先頭から再取得する。既存の items はロード中も表示し続けて「真っ白」を避ける。
-     * React 版は items を空にしてからロードするが、モバイルは既存を保持した方が UX 良。
      */
     fun refresh() {
         loadJob?.cancel()
         loadMoreJob?.cancel()
-        _state.value = _state.value.copy(loading = true, error = null)
+        _state.update { it.copy(loading = true, error = null) }
         loadJob =
             scope.launch {
                 try {
                     val page = fetchPage(cursor = null)
-                    _state.value =
+                    _state.update {
                         PagedList(
                             items = page.items,
                             nextCursor = page.nextCursor,
@@ -66,10 +69,11 @@ class TimelineViewModel(
                             loadingMore = false,
                             error = null,
                         )
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    _state.value = _state.value.copy(loading = false, error = t.toMessage())
+                    _state.update { it.copy(loading = false, error = sanitizeError(t)) }
                 }
             }
     }
@@ -81,21 +85,22 @@ class TimelineViewModel(
         val current = _state.value
         if (!current.canLoadMore) return
         val cursor = current.nextCursor ?: return
-        _state.value = current.copy(loadingMore = true, error = null)
+        _state.update { it.copy(loadingMore = true, error = null) }
         loadMoreJob =
             scope.launch {
                 try {
                     val page = fetchPage(cursor = cursor)
-                    _state.value =
-                        _state.value.copy(
-                            items = _state.value.items + page.items,
+                    _state.update {
+                        it.copy(
+                            items = it.items + page.items,
                             nextCursor = page.nextCursor,
                             loadingMore = false,
                         )
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    _state.value = _state.value.copy(loadingMore = false, error = t.toMessage())
+                    _state.update { it.copy(loadingMore = false, error = sanitizeError(t)) }
                 }
             }
     }
@@ -103,6 +108,9 @@ class TimelineViewModel(
     /**
      * Like / Unlike のトグル。React 版 `useLikeToggle.ts` と同じく optimistic。
      * 呼び出し前の `likedByViewer` / `likesCount` を控え、失敗時に元に戻す。
+     *
+     * 同じ post に対して進行中の like 呼び出しがあれば先に cancel する。rapid double tap
+     * 時は最後の tap の結果が勝つ。
      */
     fun toggleLike(post: Post) {
         val wasLiked = post.likedByViewer
@@ -110,16 +118,20 @@ class TimelineViewModel(
         val nextLiked = !wasLiked
         val nextCount = (prevCount + if (nextLiked) 1 else -1).coerceAtLeast(0)
         applyPostUpdate(post.id) { it.copy(likedByViewer = nextLiked, likesCount = nextCount) }
-        scope.launch {
-            try {
-                if (nextLiked) repository.likePost(post.id) else repository.unlikePost(post.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (t: Throwable) {
-                applyPostUpdate(post.id) { it.copy(likedByViewer = wasLiked, likesCount = prevCount) }
-                _state.value = _state.value.copy(error = t.toMessage())
+        likeJobs[post.id]?.cancel()
+        likeJobs[post.id] =
+            scope.launch {
+                try {
+                    if (nextLiked) repository.likePost(post.id) else repository.unlikePost(post.id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    applyPostUpdate(post.id) { it.copy(likedByViewer = wasLiked, likesCount = prevCount) }
+                    _state.update { it.copy(error = sanitizeError(t)) }
+                } finally {
+                    likeJobs.remove(post.id)
+                }
             }
-        }
     }
 
     /**
@@ -133,7 +145,7 @@ class TimelineViewModel(
     ): Post {
         val created = repository.createPost(content, imageIds, parentPostId)
         if (parentPostId == null) {
-            _state.value = _state.value.copy(items = listOf(created) + _state.value.items)
+            _state.update { it.copy(items = listOf(created) + it.items) }
         }
         return created
     }
@@ -141,14 +153,12 @@ class TimelineViewModel(
     /** 投稿を削除。成功後 items から除去する。失敗時は例外。 */
     suspend fun deletePost(id: String) {
         repository.deletePost(id)
-        _state.value = _state.value.copy(items = _state.value.items.filter { it.id != id })
+        _state.update { s -> s.copy(items = s.items.filter { it.id != id }) }
     }
 
     /** ユーザにエラーを見せた後の手動クリア用。 */
     fun clearError() {
-        if (_state.value.error != null) {
-            _state.value = _state.value.copy(error = null)
-        }
+        _state.update { if (it.error != null) it.copy(error = null) else it }
     }
 
     private suspend fun fetchPage(cursor: String?): PostPage {
@@ -164,13 +174,8 @@ class TimelineViewModel(
         id: String,
         transform: (Post) -> Post,
     ) {
-        val next = _state.value.items.map { if (it.id == id) transform(it) else it }
-        _state.value = _state.value.copy(items = next)
-    }
-
-    private fun Throwable.toMessage(): String =
-        when (this) {
-            is AuthException -> message ?: "エラーが発生しました"
-            else -> message ?: "エラーが発生しました"
+        _state.update { s ->
+            s.copy(items = s.items.map { if (it.id == id) transform(it) else it })
         }
+    }
 }

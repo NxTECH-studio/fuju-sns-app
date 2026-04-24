@@ -1,13 +1,13 @@
 package dev.fuju.feature.timeline.domain
 
 import dev.fuju.core.domain.Post
-import dev.fuju.core.error.AuthException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -32,20 +32,24 @@ class PostDetailViewModel(
 
     private var repliesJob: Job? = null
 
+    // 同じ post (親 or 返信) への rapid like 連打で optimistic snapshot が競合しないよう
+    // post 単位で進行中の Job を 1 本に絞る。
+    private val likeJobs = mutableMapOf<String, Job>()
+
     init {
         reload()
     }
 
     fun reload() {
-        _state.value = _state.value.copy(loadingPost = true, postError = null)
+        _state.update { it.copy(loadingPost = true, postError = null) }
         scope.launch {
             try {
                 val post = repository.getPost(postId)
-                _state.value = _state.value.copy(post = post, loadingPost = false, postError = null)
+                _state.update { it.copy(post = post, loadingPost = false, postError = null) }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                _state.value = _state.value.copy(loadingPost = false, postError = t.toMessage())
+                _state.update { it.copy(loadingPost = false, postError = sanitizeError(t)) }
             }
         }
         refreshReplies()
@@ -53,13 +57,13 @@ class PostDetailViewModel(
 
     fun refreshReplies() {
         repliesJob?.cancel()
-        _state.value = _state.value.copy(replies = _state.value.replies.copy(loading = true, error = null))
+        _state.update { it.copy(replies = it.replies.copy(loading = true, error = null)) }
         repliesJob =
             scope.launch {
                 try {
                     val page = repository.getReplies(postId, TimelineQuery(cursor = null, limit = pageSize))
-                    _state.value =
-                        _state.value.copy(
+                    _state.update {
+                        it.copy(
                             replies =
                                 PagedList(
                                     items = page.items,
@@ -69,13 +73,13 @@ class PostDetailViewModel(
                                     error = null,
                                 ),
                         )
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    _state.value =
-                        _state.value.copy(
-                            replies = _state.value.replies.copy(loading = false, error = t.toMessage()),
-                        )
+                    _state.update {
+                        it.copy(replies = it.replies.copy(loading = false, error = sanitizeError(t)))
+                    }
                 }
             }
     }
@@ -84,49 +88,53 @@ class PostDetailViewModel(
         val replies = _state.value.replies
         if (!replies.canLoadMore) return
         val cursor = replies.nextCursor ?: return
-        _state.value = _state.value.copy(replies = replies.copy(loadingMore = true, error = null))
+        _state.update { it.copy(replies = it.replies.copy(loadingMore = true, error = null)) }
         scope.launch {
             try {
                 val page = repository.getReplies(postId, TimelineQuery(cursor = cursor, limit = pageSize))
-                val current = _state.value.replies
-                _state.value =
-                    _state.value.copy(
+                _state.update { s ->
+                    s.copy(
                         replies =
-                            current.copy(
-                                items = current.items + page.items,
+                            s.replies.copy(
+                                items = s.replies.items + page.items,
                                 nextCursor = page.nextCursor,
                                 loadingMore = false,
                             ),
                     )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                _state.value =
-                    _state.value.copy(
-                        replies = _state.value.replies.copy(loadingMore = false, error = t.toMessage()),
-                    )
+                _state.update {
+                    it.copy(replies = it.replies.copy(loadingMore = false, error = sanitizeError(t)))
+                }
             }
         }
     }
 
-    /** Like トグル。親 post / 返信どちらも対象。 */
+    /**
+     * Like トグル。親 post / 返信どちらも対象。同じ post への進行中 Job があれば cancel。
+     */
     fun toggleLike(post: Post) {
         val wasLiked = post.likedByViewer
         val prevCount = post.likesCount
         val nextLiked = !wasLiked
         val nextCount = (prevCount + if (nextLiked) 1 else -1).coerceAtLeast(0)
         applyPostUpdate(post.id) { it.copy(likedByViewer = nextLiked, likesCount = nextCount) }
-        scope.launch {
-            try {
-                if (nextLiked) repository.likePost(post.id) else repository.unlikePost(post.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (t: Throwable) {
-                applyPostUpdate(post.id) { it.copy(likedByViewer = wasLiked, likesCount = prevCount) }
-                _state.value =
-                    _state.value.copy(replies = _state.value.replies.copy(error = t.toMessage()))
+        likeJobs[post.id]?.cancel()
+        likeJobs[post.id] =
+            scope.launch {
+                try {
+                    if (nextLiked) repository.likePost(post.id) else repository.unlikePost(post.id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    applyPostUpdate(post.id) { it.copy(likedByViewer = wasLiked, likesCount = prevCount) }
+                    _state.update { it.copy(replies = it.replies.copy(error = sanitizeError(t))) }
+                } finally {
+                    likeJobs.remove(post.id)
+                }
             }
-        }
     }
 
     /** 返信を作成。成功時は末尾に append + 親 post の replies_count を +1。 */
@@ -135,12 +143,12 @@ class PostDetailViewModel(
         imageIds: List<String> = emptyList(),
     ): Post {
         val reply = repository.createPost(content, imageIds, postId)
-        val current = _state.value
-        _state.value =
-            current.copy(
-                post = current.post?.copy(repliesCount = current.post.repliesCount + 1),
-                replies = current.replies.copy(items = current.replies.items + reply),
+        _state.update { s ->
+            s.copy(
+                post = s.post?.copy(repliesCount = s.post.repliesCount + 1),
+                replies = s.replies.copy(items = s.replies.items + reply),
             )
+        }
         return reply
     }
 
@@ -148,15 +156,10 @@ class PostDetailViewModel(
         id: String,
         transform: (Post) -> Post,
     ) {
-        val current = _state.value
-        val nextPost = current.post?.let { if (it.id == id) transform(it) else it }
-        val nextReplies = current.replies.items.map { if (it.id == id) transform(it) else it }
-        _state.value = current.copy(post = nextPost, replies = current.replies.copy(items = nextReplies))
-    }
-
-    private fun Throwable.toMessage(): String =
-        when (this) {
-            is AuthException -> message ?: "エラーが発生しました"
-            else -> message ?: "エラーが発生しました"
+        _state.update { s ->
+            val nextPost = s.post?.let { if (it.id == id) transform(it) else it }
+            val nextReplies = s.replies.items.map { if (it.id == id) transform(it) else it }
+            s.copy(post = nextPost, replies = s.replies.copy(items = nextReplies))
         }
+    }
 }

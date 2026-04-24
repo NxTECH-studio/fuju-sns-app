@@ -20,6 +20,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -46,12 +47,12 @@ class TimelineRepositoryImpl(
     override suspend fun getUser(
         sub: String,
         query: TimelineQuery,
-    ): PostPage = fetchTimeline("/timeline/user/$sub", query)
+    ): PostPage = fetchTimeline("/timeline/user/${sub.encodeURLPathPart()}", query)
 
     override suspend fun getPost(id: String): Post =
         wrap {
             val res: PostDetailEnvelopeDto =
-                client.get("/posts/$id").also { it.throwIfError() }.body()
+                client.get("/posts/${id.encodeURLPathPart()}").also { it.throwIfError() }.body()
             res.data.toDomain()
         }
 
@@ -62,7 +63,7 @@ class TimelineRepositoryImpl(
         wrap {
             val res: PostListResponseDto =
                 client
-                    .get("/posts/$id/replies") {
+                    .get("/posts/${id.encodeURLPathPart()}/replies") {
                         parameter("limit", query.limit)
                         if (query.cursor != null) parameter("cursor", query.cursor)
                     }.also { it.throwIfError() }
@@ -71,11 +72,11 @@ class TimelineRepositoryImpl(
         }
 
     override suspend fun likePost(id: String) {
-        wrap { client.post("/posts/$id/like").throwIfErrorOrDiscard() }
+        wrap { client.post("/posts/${id.encodeURLPathPart()}/like").throwIfErrorOrDiscard() }
     }
 
     override suspend fun unlikePost(id: String) {
-        wrap { client.delete("/posts/$id/like").throwIfErrorOrDiscard() }
+        wrap { client.delete("/posts/${id.encodeURLPathPart()}/like").throwIfErrorOrDiscard() }
     }
 
     override suspend fun createPost(
@@ -95,7 +96,7 @@ class TimelineRepositoryImpl(
         }
 
     override suspend fun deletePost(id: String) {
-        wrap { client.delete("/posts/$id").throwIfErrorOrDiscard() }
+        wrap { client.delete("/posts/${id.encodeURLPathPart()}").throwIfErrorOrDiscard() }
     }
 
     private suspend fun fetchTimeline(
