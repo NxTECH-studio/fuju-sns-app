@@ -32,6 +32,7 @@ import dev.fuju.core.ui.components.FujuSecondaryButton
 import dev.fuju.core.ui.components.FujuTextField
 import dev.fuju.core.ui.theme.FujuDimens
 import dev.fuju.feature.profile.domain.ProfileViewModel
+import dev.fuju.feature.profile.domain.sanitizeError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -157,21 +158,28 @@ private fun ProfileEditForm(
             horizontalArrangement = Arrangement.spacedBy(FujuDimens.SpaceS, Alignment.End),
         ) {
             FujuSecondaryButton(text = "キャンセル", onClick = onCancel, enabled = !busy)
+            val hasChanges = bio != me.bio || bannerUrl != me.bannerUrl
             FujuPrimaryButton(
                 text = if (busy) "保存中..." else "保存",
                 loading = busy,
-                enabled = !busy,
+                enabled = !busy && hasChanges,
                 onClick = {
                     localError = null
                     busy = true
                     coroutineScope.launch {
                         try {
-                            val next = onSubmit(UpdateProfileInput(bio = bio, bannerUrl = bannerUrl))
+                            // 空文字列を送ると backend の URI validation で 400 の可能性があるので null に寄せる。
+                            val input =
+                                UpdateProfileInput(
+                                    bio = bio,
+                                    bannerUrl = bannerUrl.takeIf { it.isNotBlank() },
+                                )
+                            val next = onSubmit(input)
                             onSave(next)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (t: Throwable) {
-                            localError = t.message ?: "保存に失敗しました。"
+                            localError = sanitizeError(t)
                         } finally {
                             busy = false
                         }

@@ -9,7 +9,7 @@ import dev.fuju.core.error.AuthException
  * `AuthException.message` には backend 由来の raw な説明文が入ることがあり、それをそのまま
  * UI に出さないためにここで変換する。
  */
-internal fun sanitizeError(t: Throwable): String {
+fun sanitizeError(t: Throwable): String {
     val status = (t as? AuthException)?.status ?: -1
     return when {
         status == 400 -> "入力内容を確認してください。"
