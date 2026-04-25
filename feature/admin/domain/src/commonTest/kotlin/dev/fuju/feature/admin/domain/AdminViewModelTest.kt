@@ -53,24 +53,24 @@ class AdminViewModelTest {
                 sampleProfileUser(sub = "3", displayName = "ALAN", displayId = "alan"),
             )
 
-            // 大文字小文字を無視した部分一致
+        // 大文字小文字を無視した部分一致
         assertEquals(
             listOf("1", "3"),
             filterUsers(users, "al").map { it.sub },
         )
-            // displayId にもマッチする
+        // displayId にもマッチする
         assertEquals(
             listOf("2"),
             filterUsers(users, "BOBBY").map { it.sub },
         )
-            // sub にもマッチする
+        // sub にもマッチする
         assertEquals(
             listOf("1"),
             filterUsers(users, "1").map { it.sub },
         )
-            // 空クエリは全件
+        // 空クエリは全件
         assertEquals(3, filterUsers(users, "  ").size)
-            // 該当なし
+        // 該当なし
         assertEquals(0, filterUsers(users, "zz").size)
     }
 
@@ -96,7 +96,10 @@ class AdminViewModelTest {
             advanceUntilIdle()
 
             assertEquals("b2", created.id)
-            assertEquals(listOf("b2", "b1"), vm.state.value.badges.map { it.id })
+            val ids =
+                vm.state.value.badges
+                    .map { it.id }
+            assertEquals(listOf("b2", "b1"), ids)
             assertEquals(1, repo.createBadgeCalls.size)
         }
 
@@ -125,8 +128,10 @@ class AdminViewModelTest {
 
             assertEquals("new", updated.label)
             // priority 1 (b2) > 0 (b1) なので並び順が入れ替わる
-            assertEquals(listOf("b2", "b1"), vm.state.value.badges.map { it.id })
-            assertEquals("new", vm.state.value.badges[1].label)
+            val badges = vm.state.value.badges
+            val ids = badges.map { it.id }
+            assertEquals(listOf("b2", "b1"), ids)
+            assertEquals("new", badges[1].label)
         }
 
     @Test
@@ -147,9 +152,10 @@ class AdminViewModelTest {
             } catch (t: Throwable) {
                 assertEquals("raw boom", t.message)
             }
-            assertNotNull(vm.state.value.error)
+            val error = vm.state.value.error
+            assertNotNull(error)
             // raw な例外メッセージがそのまま UI に出ないこと
-            assertFalse(vm.state.value.error!!.contains("raw boom"))
+            assertFalse(error.contains("raw boom"))
         }
 
     @Test

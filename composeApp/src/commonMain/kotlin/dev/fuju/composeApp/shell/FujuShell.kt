@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +36,11 @@ import dev.fuju.composeApp.AppDependencies
 import dev.fuju.composeApp.nav.FujuDestination
 import dev.fuju.core.domain.AuthStatus
 import dev.fuju.core.domain.Post
+import dev.fuju.feature.admin.domain.AdminViewModel
+import dev.fuju.feature.admin.ui.AdminBadgeEditScreen
+import dev.fuju.feature.admin.ui.AdminBadgesScreen
+import dev.fuju.feature.admin.ui.AdminUserBadgesScreen
+import dev.fuju.feature.admin.ui.AdminUsersScreen
 import dev.fuju.feature.profile.domain.FollowListKind
 import dev.fuju.feature.profile.domain.FollowListViewModel
 import dev.fuju.feature.profile.domain.ProfileViewModel
@@ -77,6 +83,19 @@ fun FujuShell(
     val authSnapshot by deps.authStateMachine.state.collectAsState()
     val canLike = authSnapshot.status == AuthStatus.Authenticated
 
+    // Admin タブの表示判定: `/me` の `is_admin` を一度だけ取得して保持する。
+    // 取得前 (null) は backend の 403 にフォールバックする方針なので Admin タブを暫定的に出す。
+    // 失敗してもレスポンスが返れば false 確定として扱い、以降は Admin タブを隠す。
+    var isAdmin by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(deps.profileRepository) {
+        try {
+            isAdmin = deps.profileRepository.getMe().isAdmin
+        } catch (_: Throwable) {
+            // 通信エラー等は false 扱いにせず、null のまま運用する（次回 reload で再判定）。
+        }
+    }
+    val showAdminTab = isAdmin != false
+
     // Composer は shell 全体から起動するため shell 自身の state に持つ。
     // `newPost` = 新規投稿、`replyTo` = 返信先 post。両立しない。
     var composerMode by remember { mutableStateOf<ComposerMode>(ComposerMode.Closed) }
@@ -107,6 +126,7 @@ fun FujuShell(
         bottomBar = {
             FujuBottomBar(
                 currentDestination = currentDestination,
+                showAdminTab = showAdminTab,
                 onSelectTab = { tab -> navController.navigateToTab(tab) },
             )
         },
@@ -195,7 +215,60 @@ fun FujuShell(
                 }
             }
             composable<FujuDestination.AdminBadges> {
-                PlaceholderScreen(label = "Admin Badges")
+                val adminScope = rememberCoroutineScope()
+                val adminViewModel =
+                    remember(deps.adminRepository, adminScope) {
+                        AdminViewModel(repository = deps.adminRepository, scope = adminScope)
+                    }
+                AdminBadgesScreen(
+                    viewModel = adminViewModel,
+                    onCreateBadge = {
+                        navController.navigate(FujuDestination.AdminBadgeEdit(badgeId = null))
+                    },
+                    onEditBadge = { badge ->
+                        navController.navigate(FujuDestination.AdminBadgeEdit(badgeId = badge.id))
+                    },
+                    onOpenUserManagement = { navController.navigate(FujuDestination.AdminUsers) },
+                )
+            }
+            composable<FujuDestination.AdminBadgeEdit> { backStack ->
+                val args = backStack.toRoute<FujuDestination.AdminBadgeEdit>()
+                val editScope = rememberCoroutineScope()
+                val editViewModel =
+                    remember(deps.adminRepository, editScope) {
+                        AdminViewModel(repository = deps.adminRepository, scope = editScope)
+                    }
+                AdminBadgeEditScreen(
+                    viewModel = editViewModel,
+                    badgeId = args.badgeId,
+                    onSave = { navController.popBackStack() },
+                    onCancel = { navController.popBackStack() },
+                )
+            }
+            composable<FujuDestination.AdminUsers> {
+                val usersScope = rememberCoroutineScope()
+                val usersViewModel =
+                    remember(deps.adminRepository, usersScope) {
+                        AdminViewModel(repository = deps.adminRepository, scope = usersScope)
+                    }
+                AdminUsersScreen(
+                    viewModel = usersViewModel,
+                    onSelectUser = { user ->
+                        navController.navigate(FujuDestination.AdminUserBadges(user.sub))
+                    },
+                )
+            }
+            composable<FujuDestination.AdminUserBadges> { backStack ->
+                val args = backStack.toRoute<FujuDestination.AdminUserBadges>()
+                val userScope = rememberCoroutineScope()
+                val userViewModel =
+                    remember(args.userSub, deps.adminRepository, userScope) {
+                        AdminViewModel(repository = deps.adminRepository, scope = userScope)
+                    }
+                AdminUserBadgesScreen(
+                    viewModel = userViewModel,
+                    userSub = args.userSub,
+                )
             }
             composable<FujuDestination.PostDetail> { backStack ->
                 val args = backStack.toRoute<FujuDestination.PostDetail>()
@@ -350,10 +423,13 @@ private data class ShellTab(
 @Composable
 private fun FujuBottomBar(
     currentDestination: NavDestination?,
+    showAdminTab: Boolean,
     onSelectTab: (FujuDestination) -> Unit,
 ) {
+    val visibleTabs =
+        if (showAdminTab) ShellTabs else ShellTabs.filterNot { it.route == FujuDestination.AdminBadges }
     NavigationBar {
-        ShellTabs.forEach { tab ->
+        visibleTabs.forEach { tab ->
             val selected =
                 currentDestination?.hierarchy?.any { dest -> dest.hasRoute(tab.routeClass) } == true
             NavigationBarItem(
@@ -414,6 +490,9 @@ private fun NavDestination?.titleForDestination(): String {
             hasRoute(FujuDestination.Profile::class) -> "プロフィール"
             hasRoute(FujuDestination.FollowList::class) -> "フォロー一覧"
             hasRoute(FujuDestination.ProfileEdit::class) -> "プロフィール編集"
+            hasRoute(FujuDestination.AdminBadgeEdit::class) -> "Admin / バッジ編集"
+            hasRoute(FujuDestination.AdminUsers::class) -> "Admin / ユーザー検索"
+            hasRoute(FujuDestination.AdminUserBadges::class) -> "Admin / ユーザーバッジ"
             else -> "Fuju"
         }
 }

@@ -46,13 +46,13 @@ import kotlinx.coroutines.launch
  * key 入力を read-only にしている。
  *
  * ViewModel は `state` の購読 + `createBadge` / `updateBadge` の呼び出しに使う。
- * 完了で [onSaved] が呼ばれ、呼び出し側で `popBackStack` する想定。
+ * 完了で [onSave] が呼ばれ、呼び出し側で `popBackStack` する想定。
  */
 @Composable
 fun AdminBadgeEditScreen(
     viewModel: AdminViewModel,
     badgeId: String?,
-    onSaved: (Badge) -> Unit,
+    onSave: (Badge) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -70,7 +70,7 @@ fun AdminBadgeEditScreen(
                 existing = existing,
                 onCreate = { input -> viewModel.createBadge(input) },
                 onUpdate = { id, input -> viewModel.updateBadge(id, input) },
-                onSaved = onSaved,
+                onSave = onSave,
                 onCancel = onCancel,
                 modifier = modifier,
             )
@@ -86,7 +86,7 @@ private fun BadgeEditForm(
     existing: Badge?,
     onCreate: suspend (CreateBadgeInput) -> Badge,
     onUpdate: suspend (String, UpdateBadgeInput) -> Badge,
-    onSaved: (Badge) -> Unit,
+    onSave: (Badge) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -229,7 +229,7 @@ private fun BadgeEditForm(
                                         ),
                                     )
                                 }
-                            onSaved(saved)
+                            onSave(saved)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (t: Throwable) {

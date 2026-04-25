@@ -125,4 +125,5 @@ class AppDependencies(
     val authStateMachine: AuthStateMachine,
     val timelineRepository: dev.fuju.feature.timeline.domain.TimelineRepository,
     val profileRepository: dev.fuju.feature.profile.domain.ProfileRepository,
+    val adminRepository: dev.fuju.feature.admin.domain.AdminRepository,
 )

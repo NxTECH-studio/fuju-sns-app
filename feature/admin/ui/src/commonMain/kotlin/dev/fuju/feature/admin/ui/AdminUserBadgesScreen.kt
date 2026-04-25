@@ -199,9 +199,8 @@ private fun CurrentBadgesList(
                             onRevoke(badge.id) { result ->
                                 pendingRevokeId = null
                                 if (result.isFailure) {
-                                    revokeError = AdminErrorMessages.sanitizeError(
-                                        result.exceptionOrNull() ?: RuntimeException(),
-                                    )
+                                    val cause = result.exceptionOrNull() ?: RuntimeException()
+                                    revokeError = AdminErrorMessages.sanitizeError(cause)
                                 }
                             }
                         },
@@ -293,9 +292,8 @@ private fun GrantForm(
                         badgeKey = ""
                         reason = ""
                     } else {
-                        localError = AdminErrorMessages.sanitizeError(
-                            result.exceptionOrNull() ?: RuntimeException(),
-                        )
+                        val cause = result.exceptionOrNull() ?: RuntimeException()
+                        localError = AdminErrorMessages.sanitizeError(cause)
                     }
                 }
             },
