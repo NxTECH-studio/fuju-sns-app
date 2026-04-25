@@ -52,4 +52,21 @@ sealed interface FujuDestination {
 
     /** 自プロフィール編集画面。自分のみ入れる想定。 */
     @Serializable data object ProfileEdit : FujuDestination
+
+    // --- Admin ---
+
+    /**
+     * Admin: バッジ編集画面。`badgeId == null` で新規作成、それ以外は更新モード。
+     */
+    @Serializable data class AdminBadgeEdit(
+        val badgeId: String?,
+    ) : FujuDestination
+
+    /** Admin: ユーザー検索 + 一覧。選択で AdminUserBadges に遷移。 */
+    @Serializable data object AdminUsers : FujuDestination
+
+    /** Admin: 指定ユーザーの badge 付与 / 剥奪画面。 */
+    @Serializable data class AdminUserBadges(
+        val userSub: String,
+    ) : FujuDestination
 }
