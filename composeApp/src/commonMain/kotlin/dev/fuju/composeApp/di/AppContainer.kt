@@ -6,6 +6,8 @@ import dev.fuju.core.network.FujuNetworkConfig
 import dev.fuju.core.network.provideEngineFactory
 import dev.fuju.core.storage.InMemorySessionHintStore
 import dev.fuju.core.storage.InMemoryTokenStorage
+import dev.fuju.core.telemetry.TelemetryDispatcher
+import dev.fuju.core.telemetry.TelemetryHttpClient
 import dev.fuju.feature.auth.data.AuthRepository
 import dev.fuju.feature.auth.domain.AuthConfig
 import dev.fuju.feature.auth.domain.AuthStateMachine
@@ -13,6 +15,7 @@ import dev.fuju.feature.profile.data.ProfileRepositoryImpl
 import dev.fuju.feature.profile.domain.ProfileRepository
 import dev.fuju.feature.timeline.data.TimelineRepositoryImpl
 import dev.fuju.feature.timeline.domain.TimelineRepository
+import kotlinx.coroutines.runBlocking
 
 /**
  * 軽量な手書き DI コンテナ。プラットフォームごとの差異（KeyStore 等）は今のところ
@@ -44,15 +47,28 @@ class AppContainer(
     val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
     val profileRepository: ProfileRepository = ProfileRepositoryImpl(apiHttpClient)
 
+    // Telemetry to fuju-emotion-model via the SNS backend's
+    // /v1/me/events endpoint. The SNS backend forwards each batch to
+    // fuju with its own AuthCore service token; the app just rides
+    // the user's Bearer.
+    val telemetryDispatcher: TelemetryDispatcher =
+        TelemetryDispatcher(sender = TelemetryHttpClient(apiHttpClient))
+
     fun asAppDependencies(): AppDependencies =
         AppDependencies(
             authStateMachine = authStateMachine,
             timelineRepository = timelineRepository,
             profileRepository = profileRepository,
+            telemetryDispatcher = telemetryDispatcher,
         )
 
     override fun close() {
         authStateMachine.dispose()
+        // Final-flush + cancel the dispatcher coroutine before tearing
+        // down the http client. runBlocking here is acceptable: this
+        // path runs once on Activity / ViewController teardown and
+        // already blocks on httpClient.close().
+        runBlocking { telemetryDispatcher.shutdown() }
         authHttpClient.close()
         apiHttpClient.close()
     }

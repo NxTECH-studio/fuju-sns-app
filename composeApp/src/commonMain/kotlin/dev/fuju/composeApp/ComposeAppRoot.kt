@@ -120,9 +120,13 @@ private fun ErrorScreen(message: String) {
 
 /**
  * コンポジションに注入する依存。Android / iOS の側で DI コンテナから組み立てる。
+ *
+ * `telemetryDispatcher` はオプション。null のとき view_*/scroll_stop は
+ * 一切送られない（screenshot test や、認証前のデバッグビルド向け）。
  */
 class AppDependencies(
     val authStateMachine: AuthStateMachine,
     val timelineRepository: dev.fuju.feature.timeline.domain.TimelineRepository,
     val profileRepository: dev.fuju.feature.profile.domain.ProfileRepository,
+    val telemetryDispatcher: dev.fuju.core.telemetry.TelemetryDispatcher? = null,
 )
