@@ -55,9 +55,9 @@ fun TimelineScreen(
     emptyTitle: String = "まだ投稿がありません",
     emptyDescription: String = "誰かをフォローするか、Global タイムラインをのぞいてみてください。",
     /**
-     * Telemetry sink for view_*/scroll_stop. Pass null on routes
-     * that should not emit (e.g. screenshot tests, public previews
-     * before auth completes).
+     * Telemetry sink for view_start / view_end / scroll_stop / rewind.
+     * Pass null on routes that should not emit (e.g. screenshot tests,
+     * public previews before auth completes).
      */
     telemetryDispatcher: TelemetryDispatcher? = null,
 ) {
