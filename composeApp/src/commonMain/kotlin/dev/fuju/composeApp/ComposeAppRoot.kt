@@ -121,8 +121,9 @@ private fun ErrorScreen(message: String) {
 /**
  * コンポジションに注入する依存。Android / iOS の側で DI コンテナから組み立てる。
  *
- * `telemetryDispatcher` はオプション。null のとき view_*/scroll_stop は
- * 一切送られない（screenshot test や、認証前のデバッグビルド向け）。
+ * `telemetryDispatcher` はオプション。null のとき view_start / view_end /
+ * scroll_stop / rewind は一切送られない（screenshot test や、認証前の
+ * デバッグビルド向け）。
  */
 class AppDependencies(
     val authStateMachine: AuthStateMachine,

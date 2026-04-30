@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package dev.fuju.feature.timeline.ui
 
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
@@ -8,9 +10,11 @@ import androidx.compose.runtime.snapshotFlow
 import dev.fuju.core.telemetry.FrontendEventType
 import dev.fuju.core.telemetry.TelemetryDispatcher
 import dev.fuju.core.telemetry.TelemetryEvent
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.datetime.Clock
 
 /**
  * Compose impression tracker. Mirrors the React frontend's
@@ -98,7 +102,7 @@ private data class ItemPhase(
     /** Wall-clock when phase entered (ms epoch). */
     val phaseStartedAtMs: Long = 0L,
     /** Set when in VIEWING — wall-clock at view_start emission. */
-    val viewStartedAt: kotlinx.datetime.Instant? = null,
+    val viewStartedAt: Instant? = null,
     /** Which dwell timer is being run-in. */
     val pendingTimerKind: TimerKind? = null,
     /** True after scroll_stop has fired this mount; suppresses re-fire. */
@@ -129,7 +133,7 @@ private fun computeVisibility(
 private fun transition(
     state: MutableMap<String, ItemPhase>,
     visibility: Map<String, Double>,
-    now: kotlinx.datetime.Instant,
+    now: Instant,
     dispatcher: TelemetryDispatcher,
 ) {
     val nowMs = now.toEpochMilliseconds()
@@ -259,7 +263,7 @@ private fun nextPhase(prev: ItemPhase, ratio: Double, nowMs: Long): ItemPhase {
 
 private fun viewEnd(
     id: String,
-    now: kotlinx.datetime.Instant,
+    now: Instant,
     phase: ItemPhase,
 ): TelemetryEvent {
     val started = phase.viewStartedAt ?: now

@@ -1,6 +1,7 @@
 package dev.fuju.core.telemetry
 
-import kotlinx.datetime.Instant
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -15,10 +16,17 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 enum class FrontendEventType {
-    @SerialName("view_start") VIEW_START,
-    @SerialName("view_end") VIEW_END,
-    @SerialName("scroll_stop") SCROLL_STOP,
-    @SerialName("rewind") REWIND,
+    @SerialName("view_start")
+    VIEW_START,
+
+    @SerialName("view_end")
+    VIEW_END,
+
+    @SerialName("scroll_stop")
+    SCROLL_STOP,
+
+    @SerialName("rewind")
+    REWIND,
 }
 
 /**
@@ -27,6 +35,7 @@ enum class FrontendEventType {
  * one. Mirrors `MeEventInput` in the React frontend repo and
  * `RawEvent` in fuju.
  */
+@OptIn(ExperimentalTime::class)
 @Serializable
 data class TelemetryEvent(
     @SerialName("item_id") val itemId: String,
