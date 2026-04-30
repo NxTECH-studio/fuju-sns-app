@@ -1,7 +1,5 @@
 package dev.fuju.core.telemetry
 
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -35,12 +33,19 @@ enum class FrontendEventType {
  * one. Mirrors `MeEventInput` in the React frontend repo and
  * `RawEvent` in fuju.
  */
-@OptIn(ExperimentalTime::class)
+/**
+ * Wire shape: timestamp is the ISO 8601 representation
+ * (`2026-04-30T10:00:00Z`). The Compose tracker formats from
+ * `kotlin.time.Instant` via `toString()`. We don't pull in a
+ * kotlinx-serialization Instant serializer because kotlinx-datetime
+ * 0.7.0 + Kotlin 2.2 don't ship one for `kotlin.time.Instant` at
+ * present and a string wire keeps tenant interop simple.
+ */
 @Serializable
 data class TelemetryEvent(
     @SerialName("item_id") val itemId: String,
     @SerialName("event_type") val eventType: FrontendEventType,
-    val timestamp: Instant,
+    val timestamp: String,
     @SerialName("duration_seconds") val durationSeconds: Double? = null,
     @SerialName("position_seconds") val positionSeconds: Double? = null,
     val metadata: Map<String, String>? = null,

@@ -1,12 +1,8 @@
-@file:OptIn(ExperimentalTime::class)
-
 package dev.fuju.core.telemetry
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 
@@ -27,7 +23,7 @@ private fun newEvent(itemId: String): TelemetryEvent =
     TelemetryEvent(
         itemId = itemId,
         eventType = FrontendEventType.VIEW_START,
-        timestamp = Instant.fromEpochSeconds(1_700_000_000),
+        timestamp = "2023-11-14T22:13:20Z",
     )
 
 class TelemetryDispatcherTest {

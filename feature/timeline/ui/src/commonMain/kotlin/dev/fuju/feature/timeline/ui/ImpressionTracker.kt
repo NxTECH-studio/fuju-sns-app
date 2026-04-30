@@ -158,7 +158,7 @@ private fun transition(
                 TelemetryEvent(
                     itemId = id,
                     eventType = FrontendEventType.VIEW_START,
-                    timestamp = now,
+                    timestamp = now.toString(),
                 ),
             )
             state[id] = next.copy(viewStartedAt = now)
@@ -178,7 +178,7 @@ private fun transition(
                 TelemetryEvent(
                     itemId = id,
                     eventType = FrontendEventType.SCROLL_STOP,
-                    timestamp = now,
+                    timestamp = now.toString(),
                 ),
             )
         }
@@ -271,7 +271,7 @@ private fun viewEnd(
     return TelemetryEvent(
         itemId = id,
         eventType = FrontendEventType.VIEW_END,
-        timestamp = now,
+        timestamp = now.toString(),
         durationSeconds = durSec,
         positionSeconds = durSec,
     )
