@@ -1,10 +1,11 @@
 package dev.fuju.core.telemetry
 
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
 
 private class RecordingSender : TelemetrySender {
     val batches = mutableListOf<List<TelemetryEvent>>()
@@ -27,6 +28,13 @@ private fun newEvent(itemId: String): TelemetryEvent =
     )
 
 class TelemetryDispatcherTest {
+    /**
+     * Internal scope-accepting ctor is the only way to bind the
+     * dispatcher's loop coroutine to runTest's TestScope so virtual
+     * time advances through `delay` / `advanceUntilIdle` correctly.
+     * Production code uses the public ctor which spawns its own
+     * Dispatchers.Default scope (no test rig dependency).
+     */
     @Test
     fun batchSizeFlush() =
         runTest {
@@ -34,16 +42,13 @@ class TelemetryDispatcherTest {
             val d =
                 TelemetryDispatcher(
                     sender = sender,
+                    scope = backgroundScope,
                     batchSize = 3,
                     flushIntervalMs = 60_000L, // disabled by being long
                     queueCapacity = 16,
                 )
             repeat(5) { d.enqueue(newEvent("c$it")) }
-            // Wait for the batch-size flush to fire.
-            var attempts = 0
-            while (attempts++ < 200 && sender.batches.flatten().size < 3) {
-                delay(10)
-            }
+            advanceUntilIdle()
             d.shutdown()
             // First three flushed by size; trailing two flushed on shutdown.
             assertEquals(5, sender.batches.flatten().size)
@@ -53,7 +58,14 @@ class TelemetryDispatcherTest {
     fun shutdownDrainsRemaining() =
         runTest {
             val sender = RecordingSender()
-            val d = TelemetryDispatcher(sender = sender, batchSize = 100, flushIntervalMs = 60_000L)
+            val d =
+                TelemetryDispatcher(
+                    sender = sender,
+                    scope = backgroundScope,
+                    batchSize = 100,
+                    flushIntervalMs = 60_000L,
+                    queueCapacity = 16,
+                )
             d.enqueue(newEvent("only"))
             d.shutdown()
             assertEquals(1, sender.batches.flatten().size)
@@ -73,11 +85,13 @@ class TelemetryDispatcherTest {
             val d =
                 TelemetryDispatcher(
                     sender = sender,
+                    scope = backgroundScope,
                     batchSize = 1000,
                     flushIntervalMs = 60_000L,
                     queueCapacity = 4,
                 )
             repeat(8) { d.enqueue(newEvent("c$it")) }
+            advanceUntilIdle()
             d.shutdown()
             val ids = sender.batches.flatten().map { it.itemId }
             assertTrue(ids.size <= 4, "queue must cap at 4, got $ids")
@@ -93,13 +107,16 @@ class TelemetryDispatcherTest {
             val d =
                 TelemetryDispatcher(
                     sender = sender,
+                    scope = backgroundScope,
                     batchSize = 1,
                     flushIntervalMs = 60_000L,
+                    queueCapacity = 16,
                 )
             d.enqueue(newEvent("first"))
-            // Wait for the failed flush.
-            delay(50)
+            advanceTimeBy(50L)
+            advanceUntilIdle()
             d.enqueue(newEvent("second"))
+            advanceUntilIdle()
             d.shutdown()
             // First batch failed (recorded nothing), second batch must
             // succeed despite the prior failure.

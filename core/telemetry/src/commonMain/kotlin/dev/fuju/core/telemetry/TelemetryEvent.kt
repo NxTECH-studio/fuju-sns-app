@@ -32,14 +32,12 @@ enum class FrontendEventType {
  * backend overrides `user_id` server-side, so the client never sends
  * one. Mirrors `MeEventInput` in the React frontend repo and
  * `RawEvent` in fuju.
- */
-/**
- * Wire shape: timestamp is the ISO 8601 representation
- * (`2026-04-30T10:00:00Z`). The Compose tracker formats from
- * `kotlin.time.Instant` via `toString()`. We don't pull in a
- * kotlinx-serialization Instant serializer because kotlinx-datetime
- * 0.7.0 + Kotlin 2.2 don't ship one for `kotlin.time.Instant` at
- * present and a string wire keeps tenant interop simple.
+ *
+ * `timestamp` is an ISO 8601 string (`2026-04-30T10:00:00Z`). The
+ * Compose impression tracker formats from `kotlin.time.Instant` via
+ * `toString()`. A string wire avoids pulling in a kotlinx-serialization
+ * Instant serializer (kotlinx-datetime 0.7.0 + Kotlin 2.2 don't ship
+ * one for `kotlin.time.Instant`) and keeps tenant interop simple.
  */
 @Serializable
 data class TelemetryEvent(

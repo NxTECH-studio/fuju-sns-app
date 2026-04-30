@@ -28,7 +28,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  *   - [shutdown] cancels the loop and runs one final best-effort
  *     flush. Idempotent.
  */
-class TelemetryDispatcher private constructor(
+class TelemetryDispatcher internal constructor(
     private val sender: TelemetrySender,
     private val scope: CoroutineScope,
     private val batchSize: Int,

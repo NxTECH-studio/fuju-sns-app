@@ -6,15 +6,17 @@ import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import dev.fuju.core.telemetry.FrontendEventType
 import dev.fuju.core.telemetry.TelemetryDispatcher
 import dev.fuju.core.telemetry.TelemetryEvent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 
 /**
  * Compose impression tracker. Mirrors the React frontend's
@@ -49,6 +51,11 @@ fun ImpressionTracker(
     dispatcher: TelemetryDispatcher,
     itemKeyAt: (index: Int) -> String?,
 ) {
+    // Wrap the lambda so the LaunchedEffect captures a stable reference;
+    // ktlint compose:lambda-param-event-trailing rule otherwise flags
+    // the raw `itemKeyAt` capture as a re-creation hazard inside the
+    // restarting effect.
+    val currentItemKeyAt by rememberUpdatedState(itemKeyAt)
     LaunchedEffect(listState, dispatcher) {
         val state = mutableMapOf<String, ItemPhase>()
         try {
@@ -59,7 +66,7 @@ fun ImpressionTracker(
             // emissions internally so resting frames are cheap.
             snapshotFlow { listState.layoutInfo }
                 .collectLatest { info ->
-                    val visibility = computeVisibility(info, itemKeyAt)
+                    val visibility = computeVisibility(info, currentItemKeyAt)
                     // Poll until either the next emission cancels us
                     // (collectLatest semantics) or every per-item
                     // phase settles (no pending dwell timer left).
@@ -192,7 +199,11 @@ private fun transition(
  * phase entry. Side effects (dispatcher.enqueue) are handled by the
  * caller after diffing prev/next.
  */
-private fun nextPhase(prev: ItemPhase, ratio: Double, nowMs: Long): ItemPhase {
+private fun nextPhase(
+    prev: ItemPhase,
+    ratio: Double,
+    nowMs: Long,
+): ItemPhase {
     val elapsed = nowMs - prev.phaseStartedAtMs
 
     return when {
@@ -222,11 +233,12 @@ private fun nextPhase(prev: ItemPhase, ratio: Double, nowMs: Long): ItemPhase {
             // In-between band. If we were viewing, drop out (caller
             // will emit view_end). Else schedule scroll_stop.
             when (prev.kind) {
-                PhaseKind.VIEWING -> ItemPhase(
-                    kind = PhaseKind.IDLE,
-                    phaseStartedAtMs = nowMs,
-                    scrollStopFired = prev.scrollStopFired,
-                )
+                PhaseKind.VIEWING ->
+                    ItemPhase(
+                        kind = PhaseKind.IDLE,
+                        phaseStartedAtMs = nowMs,
+                        scrollStopFired = prev.scrollStopFired,
+                    )
                 PhaseKind.SCROLL_STOP_PENDING ->
                     if (!prev.scrollStopFired && elapsed >= SCROLL_STOP_DWELL_MS) {
                         ItemPhase(
