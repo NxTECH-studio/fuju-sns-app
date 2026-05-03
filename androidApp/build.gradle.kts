@@ -52,11 +52,15 @@ android {
     // 現状は 3 flavor 全てが同じ HTTPS 本番エンドポイントを指す。
     // 将来 `auth-staging.fujupay.app` / `snsapi-dev.fujupay.app` のようなサブドメインが
     // 必要になったら、この Map を書き換えるだけで対応できる。
+    val apiUrl = "https://snsapi.fujupay.app"
+    val authUrl = "https://auth.fujupay.app"
+    val modelUrl = "https://emotion-model.fujupay.app"
+    val tenantId = "sns_a"
     val envFlavors =
         mapOf(
-            "dev" to listOf(".dev", "-dev", "https://snsapi.fujupay.app", "https://auth.fujupay.app", "https://emotion-model.fujupay.app", "sns_a"),
-            "staging" to listOf(".staging", "-staging", "https://snsapi.fujupay.app", "https://auth.fujupay.app", "https://emotion-model.fujupay.app", "sns_a"),
-            "prod" to listOf("", "", "https://snsapi.fujupay.app", "https://auth.fujupay.app", "https://emotion-model.fujupay.app", "sns_a"),
+            "dev" to listOf(".dev", "-dev", apiUrl, authUrl, modelUrl, tenantId),
+            "staging" to listOf(".staging", "-staging", apiUrl, authUrl, modelUrl, tenantId),
+            "prod" to listOf("", "", apiUrl, authUrl, modelUrl, tenantId),
         )
 
     productFlavors {
