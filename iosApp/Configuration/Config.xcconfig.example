@@ -6,13 +6,10 @@
 //
 // Xcode でスキーマごとに Dev / Staging / Prod の xcconfig を読み込む。
 // BuildConfig (Android 側 `buildConfigField`) と揃える環境変数:
-//   FUJU_API_BASE_URL / AUTH_CORE_BASE_URL / FUJU_MODEL_BASE_URL /
-//   FUJU_MODEL_TENANT_ID / SOCIAL_REDIRECT_URI
+//   FUJU_API_BASE_URL / AUTH_CORE_BASE_URL / SOCIAL_REDIRECT_URI
 
 FUJU_API_BASE_URL = https://snsapi.fujupay.app
 AUTH_CORE_BASE_URL = https://auth.fujupay.app
-FUJU_MODEL_BASE_URL = https://emotion-model.fujupay.app
-FUJU_MODEL_TENANT_ID = sns_a
 SOCIAL_REDIRECT_URI = fuju://auth/callback
 
 // Compose Multiplatform が出力する XCFramework のパス。

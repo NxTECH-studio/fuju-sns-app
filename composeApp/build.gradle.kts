@@ -40,7 +40,6 @@ kotlin {
             implementation(project(":core:error"))
             implementation(project(":core:network"))
             implementation(project(":core:storage"))
-            implementation(project(":core:telemetry"))
             implementation(project(":core:ui"))
 
             implementation(project(":feature:auth:data"))

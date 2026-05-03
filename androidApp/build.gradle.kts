@@ -47,20 +47,16 @@ android {
 
     flavorDimensions += "env"
 
-    // flavor ごとのデフォルト URL 群。キー: flavor 名、値: [idSuffix, versionSuffix, apiBaseUrl, authCoreBaseUrl, modelBaseUrl, modelTenantId]。
+    // flavor ごとのデフォルト URL 群。キー: flavor 名、値: [idSuffix, versionSuffix, apiBaseUrl, authCoreBaseUrl]。
     // 全て local.properties で 1 括 override できる。socialRedirectUri は全 flavor で同じ。
     // 現状は 3 flavor 全てが同じ HTTPS 本番エンドポイントを指す。
     // 将来 `auth-staging.fujupay.app` / `snsapi-dev.fujupay.app` のようなサブドメインが
     // 必要になったら、この Map を書き換えるだけで対応できる。
-    val apiUrl = "https://snsapi.fujupay.app"
-    val authUrl = "https://auth.fujupay.app"
-    val modelUrl = "https://emotion-model.fujupay.app"
-    val tenantId = "sns_a"
     val envFlavors =
         mapOf(
-            "dev" to listOf(".dev", "-dev", apiUrl, authUrl, modelUrl, tenantId),
-            "staging" to listOf(".staging", "-staging", apiUrl, authUrl, modelUrl, tenantId),
-            "prod" to listOf("", "", apiUrl, authUrl, modelUrl, tenantId),
+            "dev" to listOf(".dev", "-dev", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
+            "staging" to listOf(".staging", "-staging", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
+            "prod" to listOf("", "", "https://snsapi.fujupay.app", "https://auth.fujupay.app"),
         )
 
     productFlavors {
@@ -78,16 +74,6 @@ android {
                     "String",
                     "AUTH_CORE_BASE_URL",
                     "\"${localOrDefault("fuju.authCoreBaseUrl", values[3])}\"",
-                )
-                buildConfigField(
-                    "String",
-                    "FUJU_MODEL_BASE_URL",
-                    "\"${localOrDefault("fuju.modelBaseUrl", values[4])}\"",
-                )
-                buildConfigField(
-                    "String",
-                    "FUJU_MODEL_TENANT_ID",
-                    "\"${localOrDefault("fuju.modelTenantId", values[5])}\"",
                 )
                 buildConfigField(
                     "String",

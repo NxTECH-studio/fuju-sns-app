@@ -134,7 +134,6 @@ fun FujuShell(
                         post.author?.let { navController.navigate(FujuDestination.Profile(it.sub)) }
                     },
                     onReply = { post -> composerMode = ComposerMode.Reply(post) },
-                    telemetryDispatcher = deps.telemetryDispatcher,
                 )
             }
             composable<FujuDestination.GlobalTimeline> {
@@ -146,7 +145,6 @@ fun FujuShell(
                         post.author?.let { navController.navigate(FujuDestination.Profile(it.sub)) }
                     },
                     onReply = { post -> composerMode = ComposerMode.Reply(post) },
-                    telemetryDispatcher = deps.telemetryDispatcher,
                 )
             }
             composable<FujuDestination.MyProfile> {

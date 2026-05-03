@@ -5,7 +5,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import dev.fuju.core.domain.Post
-import dev.fuju.core.telemetry.TelemetryDispatcher
 import dev.fuju.feature.timeline.domain.TimelineViewModel
 
 /**
@@ -19,7 +18,6 @@ fun GlobalTimelineScreen(
     onOpenAuthor: (Post) -> Unit,
     onReply: (Post) -> Unit,
     modifier: Modifier = Modifier,
-    telemetryDispatcher: TelemetryDispatcher? = null,
 ) {
     val state by viewModel.state.collectAsState()
     TimelineScreen(
@@ -34,6 +32,5 @@ fun GlobalTimelineScreen(
         modifier = modifier,
         emptyTitle = "公開投稿がありません",
         emptyDescription = "最初の投稿者になってみましょう。",
-        telemetryDispatcher = telemetryDispatcher,
     )
 }

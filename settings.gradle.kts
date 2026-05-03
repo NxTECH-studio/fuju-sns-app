@@ -36,7 +36,6 @@ include(":core:domain")
 include(":core:error")
 include(":core:network")
 include(":core:storage")
-include(":core:telemetry")
 include(":core:ui")
 
 // Feature layer
