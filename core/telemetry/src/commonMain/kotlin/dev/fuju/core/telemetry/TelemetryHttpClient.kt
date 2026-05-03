@@ -28,9 +28,14 @@ interface TelemetrySender {
  * the in-memory [TelemetryEvent] into the `/v1/{tenant}/events` wire
  * shape and stamps `user_id` from [userIdProvider] at send time.
  *
- * When [userIdProvider] returns null (signed-out / pre-bootstrap) the
- * batch is dropped — the model rejects unauthenticated events with
- * 401 anyway, and retrying just amplifies noise.
+ * When [userIdProvider] returns null (signed-out / token expired
+ * mid-flush) the batch is dropped. TelemetryDispatcher already drained
+ * the events from its in-memory channel before calling sendBatch, so
+ * there is no straightforward way to re-queue. The race window is
+ * narrow in practice: the impression-tracker only mounts under
+ * authenticated TimelineScreen variants, so unauthenticated enqueue is
+ * rare. If we widen the surface to public timelines, move the userId
+ * gate up into the dispatcher so events stay in the channel.
  */
 class TelemetryHttpClient(
     private val client: HttpClient,
