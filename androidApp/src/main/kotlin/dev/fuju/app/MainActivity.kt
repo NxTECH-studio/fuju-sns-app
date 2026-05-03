@@ -26,6 +26,8 @@ class MainActivity : ComponentActivity() {
             AppContainer(
                 authCoreBaseUrl = BuildConfig.AUTH_CORE_BASE_URL,
                 fujuApiBaseUrl = BuildConfig.FUJU_API_BASE_URL,
+                fujuModelBaseUrl = BuildConfig.FUJU_MODEL_BASE_URL,
+                fujuModelTenantId = BuildConfig.FUJU_MODEL_TENANT_ID,
                 verboseLogging = BuildConfig.DEBUG,
             )
 

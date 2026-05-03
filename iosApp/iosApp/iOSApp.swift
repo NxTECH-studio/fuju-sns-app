@@ -48,6 +48,8 @@ final class IOSAppSession: ObservableObject {
         self.container = AppContainer(
             authCoreBaseUrl: "https://auth.fujupay.app",
             fujuApiBaseUrl: "https://snsapi.fujupay.app",
+            fujuModelBaseUrl: "https://emotion-model.fujupay.app",
+            fujuModelTenantId: "sns_a",
             verboseLogging: verbose
         )
     }

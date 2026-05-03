@@ -27,6 +27,8 @@ import kotlinx.coroutines.runBlocking
 class AppContainer(
     authCoreBaseUrl: String,
     fujuApiBaseUrl: String,
+    fujuModelBaseUrl: String,
+    fujuModelTenantId: String,
     verboseLogging: Boolean = false,
 ) : AutoCloseable {
     private val tokenStorage = InMemoryTokenStorage()
@@ -40,6 +42,7 @@ class AppContainer(
 
     val authHttpClient = factory.create(authCoreBaseUrl, enableBearer = true)
     val apiHttpClient = factory.create(fujuApiBaseUrl, enableBearer = true)
+    val modelHttpClient = factory.create(fujuModelBaseUrl, enableBearer = true)
 
     val authRepository = AuthRepository(authHttpClient, tokenStorage, sessionHint)
     val authStateMachine = AuthStateMachine(authRepository, AuthConfig())
@@ -47,12 +50,22 @@ class AppContainer(
     val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
     val profileRepository: ProfileRepository = ProfileRepositoryImpl(apiHttpClient)
 
-    // Telemetry to fuju-emotion-model via the SNS backend's
-    // /v1/me/events endpoint. The SNS backend forwards each batch to
-    // fuju with its own AuthCore service token; the app just rides
-    // the user's Bearer.
+    // Telemetry direct to fuju-emotion-model. user_id is stamped at flush
+    // time from the AuthCore sub of the currently signed-in user; reading
+    // from authStateMachine.state lazily means sign-in transitions take
+    // effect on the next flush without recreating the dispatcher.
     val telemetryDispatcher: TelemetryDispatcher =
-        TelemetryDispatcher(sender = TelemetryHttpClient(apiHttpClient))
+        TelemetryDispatcher(
+            sender =
+                TelemetryHttpClient(
+                    client = modelHttpClient,
+                    tenantId = fujuModelTenantId,
+                    userIdProvider = {
+                        authStateMachine.state.value.user
+                            ?.id
+                    },
+                ),
+        )
 
     fun asAppDependencies(): AppDependencies =
         AppDependencies(
@@ -71,5 +84,6 @@ class AppContainer(
         runBlocking { telemetryDispatcher.shutdown() }
         authHttpClient.close()
         apiHttpClient.close()
+        modelHttpClient.close()
     }
 }

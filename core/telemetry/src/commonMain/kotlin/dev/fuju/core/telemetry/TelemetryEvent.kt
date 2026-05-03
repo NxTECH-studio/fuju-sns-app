@@ -6,8 +6,7 @@ import kotlinx.serialization.Serializable
 /**
  * Whitelist of event types this client can emit. Server-side hooks
  * (like / follow / comment / share / save / unsave) are emitted from
- * SNS backend usecases, not from the app — the backend rejects them
- * on `/v1/me/events` to prevent spoofing.
+ * SNS backend usecases, not from the app.
  *
  * Mirrors `FrontendEventType` in the React frontend repo
  * (`fuju-sns-frontend/src/api/types.ts`).
@@ -28,10 +27,10 @@ enum class FrontendEventType {
 }
 
 /**
- * Wire shape for the SNS backend's `POST /v1/me/events` endpoint. The
- * backend overrides `user_id` server-side, so the client never sends
- * one. Mirrors `MeEventInput` in the React frontend repo and
- * `RawEvent` in fuju.
+ * Caller-facing event captured by the impression tracker. The
+ * dispatcher stamps the per-batch `user_id` at flush time, so the
+ * tracker doesn't need to thread the AuthCore sub through every
+ * call site.
  *
  * `timestamp` is an ISO 8601 string (`2026-04-30T10:00:00Z`). The
  * Compose impression tracker formats from `kotlin.time.Instant` via
@@ -39,8 +38,25 @@ enum class FrontendEventType {
  * Instant serializer (kotlinx-datetime 0.7.0 + Kotlin 2.2 don't ship
  * one for `kotlin.time.Instant`) and keeps tenant interop simple.
  */
-@Serializable
 data class TelemetryEvent(
+    val itemId: String,
+    val eventType: FrontendEventType,
+    val timestamp: String,
+    val durationSeconds: Double? = null,
+    val positionSeconds: Double? = null,
+    val metadata: Map<String, String>? = null,
+)
+
+/**
+ * Wire shape for fuju-emotion-model's `POST /v1/{tenant}/events`. The
+ * `user_id` field is stamped by [TelemetryHttpClient] at flush time
+ * from the AuthCore sub of the currently signed-in user; once the
+ * model derives it from the Bearer this field can be dropped from
+ * the payload.
+ */
+@Serializable
+internal data class TelemetryEventWire(
+    @SerialName("user_id") val userId: String,
     @SerialName("item_id") val itemId: String,
     @SerialName("event_type") val eventType: FrontendEventType,
     val timestamp: String,
@@ -51,7 +67,7 @@ data class TelemetryEvent(
 
 @Serializable
 internal data class TelemetryBatch(
-    val events: List<TelemetryEvent>,
+    val events: List<TelemetryEventWire>,
 )
 
 @Serializable

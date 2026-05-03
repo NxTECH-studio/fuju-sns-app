@@ -14,27 +14,48 @@ import io.ktor.http.contentType
  */
 interface TelemetrySender {
     /**
-     * POST `events` to the SNS backend's `/v1/me/events`. Returns
-     * normally on 2xx, throws on 4xx/5xx (the dispatcher catches and
-     * logs but does not retry — telemetry is best-effort).
+     * POST `events` to fuju-emotion-model's `/v1/{tenant}/events`.
+     * Returns normally on 2xx, throws on 4xx/5xx (the dispatcher
+     * catches and logs but does not retry — telemetry is best-effort).
      */
     suspend fun sendBatch(events: List<TelemetryEvent>)
 }
 
 /**
- * Ktor-backed implementation. The Bearer token is attached by the
- * BearerTokenPlugin already configured on [client]; this layer only
- * cares about the wire shape and status mapping.
+ * Ktor-backed implementation that ingests directly into
+ * fuju-emotion-model. The Bearer token is attached by the
+ * BearerTokenPlugin already configured on [client]; this layer maps
+ * the in-memory [TelemetryEvent] into the `/v1/{tenant}/events` wire
+ * shape and stamps `user_id` from [userIdProvider] at send time.
+ *
+ * When [userIdProvider] returns null (signed-out / pre-bootstrap) the
+ * batch is dropped — the model rejects unauthenticated events with
+ * 401 anyway, and retrying just amplifies noise.
  */
 class TelemetryHttpClient(
     private val client: HttpClient,
+    private val tenantId: String,
+    private val userIdProvider: () -> String?,
 ) : TelemetrySender {
     override suspend fun sendBatch(events: List<TelemetryEvent>) {
         if (events.isEmpty()) return
+        val userId = userIdProvider() ?: return
+        val wire =
+            events.map { e ->
+                TelemetryEventWire(
+                    userId = userId,
+                    itemId = e.itemId,
+                    eventType = e.eventType,
+                    timestamp = e.timestamp,
+                    durationSeconds = e.durationSeconds,
+                    positionSeconds = e.positionSeconds,
+                    metadata = e.metadata,
+                )
+            }
         val response =
-            client.post("/v1/me/events") {
+            client.post("/v1/$tenantId/events") {
                 contentType(ContentType.Application.Json)
-                setBody(TelemetryBatch(events = events))
+                setBody(TelemetryBatch(events = wire))
             }
         response.throwIfErrorOrDiscard()
     }
