@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.fuju.core.domain.Post
+import dev.fuju.core.telemetry.TelemetryDispatcher
 import dev.fuju.core.ui.components.EmptyState
 import dev.fuju.core.ui.components.ErrorFallback
 import dev.fuju.core.ui.theme.FujuDimens
@@ -53,6 +54,12 @@ fun TimelineScreen(
     header: (@Composable () -> Unit)? = null,
     emptyTitle: String = "まだ投稿がありません",
     emptyDescription: String = "誰かをフォローするか、Global タイムラインをのぞいてみてください。",
+    /**
+     * Telemetry sink for view_start / view_end / scroll_stop / rewind.
+     * Pass null on routes that should not emit (e.g. screenshot tests,
+     * public previews before auth completes).
+     */
+    telemetryDispatcher: TelemetryDispatcher? = null,
 ) {
     val pullState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -84,6 +91,7 @@ fun TimelineScreen(
                     onReply = onReply,
                     onToggleLike = onToggleLike,
                     header = header,
+                    telemetryDispatcher = telemetryDispatcher,
                 )
         }
     }
@@ -99,6 +107,7 @@ private fun TimelineList(
     onReply: (Post) -> Unit,
     onToggleLike: (Post) -> Unit,
     header: (@Composable () -> Unit)?,
+    telemetryDispatcher: TelemetryDispatcher?,
 ) {
     val listState = rememberLazyListState()
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
@@ -112,6 +121,21 @@ private fun TimelineList(
     }
     LaunchedEffect(nearEnd, state.canLoadMore) {
         if (nearEnd && state.canLoadMore) currentOnLoadMore()
+    }
+    // Impression telemetry. The header occupies index 0 when present
+    // (key="timeline-header"); the trailing loading-more / end / error
+    // sentinels live at indices > items.size. itemKeyAt skips them.
+    val items = state.items
+    val hasHeader = header != null
+    if (telemetryDispatcher != null) {
+        ImpressionTracker(
+            listState = listState,
+            dispatcher = telemetryDispatcher,
+            itemKeyAt = { idx ->
+                val postIdx = if (hasHeader) idx - 1 else idx
+                items.getOrNull(postIdx)?.id
+            },
+        )
     }
     LazyColumn(
         state = listState,
