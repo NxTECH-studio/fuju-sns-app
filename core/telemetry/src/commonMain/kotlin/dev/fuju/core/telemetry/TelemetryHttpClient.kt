@@ -26,34 +26,29 @@ interface TelemetrySender {
  * fuju-emotion-model. The Bearer token is attached by the
  * BearerTokenPlugin already configured on [client]; this layer maps
  * the in-memory [TelemetryEvent] into the `/v1/{tenant}/events` wire
- * shape.
+ * shape and stamps `user_id` from [userIdProvider] at send time.
  *
- * The wire payload no longer carries `user_id`. The model's
- * introspection middleware (see fuju-emotion-model
- * ``api/ingestion_app.post_events``) derives the caller's user id from
- * the AuthCore Bearer's ``sub`` claim server-side, so the client must
- * not send a placeholder (and a malicious client can't spoof one
- * either).
- *
- * [signedInProvider] is consulted to skip flushes when the end-user
- * is signed out / token expired mid-flush — the model would 401 those
- * requests, so dropping locally avoids needless network traffic. The
- * race window is narrow in practice: the impression-tracker only
- * mounts under authenticated TimelineScreen variants. If we widen the
- * surface to public timelines, move the gate up into the dispatcher
- * so events stay in the channel rather than being dropped here.
+ * When [userIdProvider] returns null (signed-out / token expired
+ * mid-flush) the batch is dropped. TelemetryDispatcher already drained
+ * the events from its in-memory channel before calling sendBatch, so
+ * there is no straightforward way to re-queue. The race window is
+ * narrow in practice: the impression-tracker only mounts under
+ * authenticated TimelineScreen variants, so unauthenticated enqueue is
+ * rare. If we widen the surface to public timelines, move the userId
+ * gate up into the dispatcher so events stay in the channel.
  */
 class TelemetryHttpClient(
     private val client: HttpClient,
     private val tenantId: String,
-    private val signedInProvider: () -> Boolean,
+    private val userIdProvider: () -> String?,
 ) : TelemetrySender {
     override suspend fun sendBatch(events: List<TelemetryEvent>) {
         if (events.isEmpty()) return
-        if (!signedInProvider()) return
+        val userId = userIdProvider() ?: return
         val wire =
             events.map { e ->
                 TelemetryEventWire(
+                    userId = userId,
                     itemId = e.itemId,
                     eventType = e.eventType,
                     timestamp = e.timestamp,

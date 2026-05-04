@@ -50,20 +50,19 @@ class AppContainer(
     val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
     val profileRepository: ProfileRepository = ProfileRepositoryImpl(apiHttpClient)
 
-    // Telemetry direct to fuju-emotion-model. The wire payload no
-    // longer carries user_id — the model derives it from the AuthCore
-    // Bearer's `sub` claim server-side. Reading auth state lazily lets
-    // sign-in transitions take effect on the next flush without
-    // recreating the dispatcher; we just gate flushes on whether a
-    // user is signed in (otherwise the model 401s anonymous POSTs).
+    // Telemetry direct to fuju-emotion-model. user_id is stamped at flush
+    // time from the AuthCore sub of the currently signed-in user; reading
+    // from authStateMachine.state lazily means sign-in transitions take
+    // effect on the next flush without recreating the dispatcher.
     val telemetryDispatcher: TelemetryDispatcher =
         TelemetryDispatcher(
             sender =
                 TelemetryHttpClient(
                     client = modelHttpClient,
                     tenantId = fujuModelTenantId,
-                    signedInProvider = {
-                        authStateMachine.state.value.user != null
+                    userIdProvider = {
+                        authStateMachine.state.value.user
+                            ?.id
                     },
                 ),
         )

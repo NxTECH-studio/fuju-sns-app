@@ -27,7 +27,10 @@ enum class FrontendEventType {
 }
 
 /**
- * Caller-facing event captured by the impression tracker.
+ * Caller-facing event captured by the impression tracker. The
+ * dispatcher stamps the per-batch `user_id` at flush time, so the
+ * tracker doesn't need to thread the AuthCore sub through every
+ * call site.
  *
  * `timestamp` is an ISO 8601 string (`2026-04-30T10:00:00Z`). The
  * Compose impression tracker formats from `kotlin.time.Instant` via
@@ -46,13 +49,14 @@ data class TelemetryEvent(
 
 /**
  * Wire shape for fuju-emotion-model's `POST /v1/{tenant}/events`. The
- * model derives `user_id` from the AuthCore Bearer's `sub` claim
- * server-side (see ``api/ingestion_app.post_events``), so the client
- * never sends one. This closes the spoofing loophole the placeholder
- * field implied — a malicious client could otherwise set any user id.
+ * `user_id` field is stamped by [TelemetryHttpClient] at flush time
+ * from the AuthCore sub of the currently signed-in user; once the
+ * model derives it from the Bearer this field can be dropped from
+ * the payload.
  */
 @Serializable
 internal data class TelemetryEventWire(
+    @SerialName("user_id") val userId: String,
     @SerialName("item_id") val itemId: String,
     @SerialName("event_type") val eventType: FrontendEventType,
     val timestamp: String,
