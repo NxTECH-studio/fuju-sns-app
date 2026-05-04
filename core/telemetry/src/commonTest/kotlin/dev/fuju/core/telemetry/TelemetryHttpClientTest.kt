@@ -21,6 +21,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TelemetryHttpClientTest {
     private fun mockClient(handler: MockRequestHandler): HttpClient {
@@ -60,7 +61,7 @@ class TelemetryHttpClientTest {
                 TelemetryHttpClient(
                     client = client,
                     tenantId = "sns_a",
-                    userIdProvider = { "user-42" },
+                    signedInProvider = { true },
                 )
             sender.sendBatch(listOf(sampleEvent))
             assertEquals("/v1/sns_a/events", capturedPath)
@@ -79,14 +80,14 @@ class TelemetryHttpClientTest {
                 TelemetryHttpClient(
                     client = client,
                     tenantId = "sns_a",
-                    userIdProvider = { "user-42" },
+                    signedInProvider = { true },
                 )
             sender.sendBatch(emptyList())
             assertEquals(false, called)
         }
 
     @Test
-    fun nullUserIdDropsBatch() =
+    fun signedOutDropsBatch() =
         runTest {
             var called = false
             val client =
@@ -98,21 +99,21 @@ class TelemetryHttpClientTest {
                 TelemetryHttpClient(
                     client = client,
                     tenantId = "sns_a",
-                    userIdProvider = { null },
+                    signedInProvider = { false },
                 )
             sender.sendBatch(listOf(sampleEvent))
             assertEquals(false, called)
         }
 
     @Test
-    fun wireShapeIncludesUserIdAndSnakeCaseFields() =
+    fun wireShapeOmitsUserIdAndUsesSnakeCaseFields() =
         runTest {
             // Round-trip: encode a TelemetryEventWire the way the client would,
-            // then decode and assert the wire shape rather than relying on
-            // MockEngine body capture (which requires ByteReadChannel handling).
+            // then decode and assert the wire shape. Critically: the JSON
+            // must NOT carry user_id — the model derives it from the
+            // AuthCore Bearer's sub claim server-side.
             val wire =
                 TelemetryEventWire(
-                    userId = "user-42",
                     itemId = sampleEvent.itemId,
                     eventType = sampleEvent.eventType,
                     timestamp = sampleEvent.timestamp,
@@ -123,7 +124,10 @@ class TelemetryHttpClientTest {
             val json = Json.encodeToString(TelemetryBatch.serializer(), batch)
             val parsed = Json.parseToJsonElement(json).jsonObject
             val ev = parsed["events"]!!.jsonArray[0].jsonObject
-            assertEquals("user-42", ev["user_id"]!!.jsonPrimitive.content)
+            assertTrue(
+                "user_id" !in ev,
+                "wire payload must not contain user_id; got $ev",
+            )
             assertEquals("post-1", ev["item_id"]!!.jsonPrimitive.content)
             assertEquals("view_end", ev["event_type"]!!.jsonPrimitive.content)
             assertEquals(4.5, ev["duration_seconds"]!!.jsonPrimitive.content.toDouble())
