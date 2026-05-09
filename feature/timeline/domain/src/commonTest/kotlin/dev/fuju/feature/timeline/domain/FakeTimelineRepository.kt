@@ -8,7 +8,6 @@ import kotlinx.coroutines.CompletableDeferred
  * 呼び出しの記録 + 次の応答を sequential に差し替え可能にする最小の fake。
  */
 class FakeTimelineRepository : TimelineRepository {
-    val homeCalls = mutableListOf<TimelineQuery>()
     val globalCalls = mutableListOf<TimelineQuery>()
     val userCalls = mutableListOf<Pair<String, TimelineQuery>>()
     val likeCalls = mutableListOf<String>()
@@ -17,7 +16,6 @@ class FakeTimelineRepository : TimelineRepository {
     val deleteCalls = mutableListOf<String>()
 
     /** 取得系の応答キュー。空になったら例外を投げる。 */
-    private val homeResponses = ArrayDeque<Result<PostPage>>()
     private val globalResponses = ArrayDeque<Result<PostPage>>()
     private val userResponses = ArrayDeque<Result<PostPage>>()
     private val getPostResponses = ArrayDeque<Result<Post>>()
@@ -41,16 +39,12 @@ class FakeTimelineRepository : TimelineRepository {
     /** 挙動を遅延させたい場合に待機を挟む Deferred。テストで `complete()` を呼ぶ。 */
     var likeGate: CompletableDeferred<Unit>? = null
 
-    fun enqueueHome(page: PostPage) {
-        homeResponses += Result.success(page)
-    }
-
-    fun enqueueHomeError(error: Throwable) {
-        homeResponses += Result.failure(error)
-    }
-
     fun enqueueGlobal(page: PostPage) {
         globalResponses += Result.success(page)
+    }
+
+    fun enqueueGlobalError(error: Throwable) {
+        globalResponses += Result.failure(error)
     }
 
     fun enqueueUser(page: PostPage) {
@@ -67,12 +61,6 @@ class FakeTimelineRepository : TimelineRepository {
 
     fun enqueueReplies(page: PostPage) {
         repliesResponses += Result.success(page)
-    }
-
-    override suspend fun getHome(query: TimelineQuery): PostPage {
-        homeCalls += query
-        return homeResponses.removeFirstOrNull()?.getOrThrow()
-            ?: error("unexpected getHome call: ${homeCalls.size}")
     }
 
     override suspend fun getGlobal(query: TimelineQuery): PostPage {
@@ -115,10 +103,9 @@ class FakeTimelineRepository : TimelineRepository {
 
     override suspend fun createPost(
         content: String,
-        imageIds: List<String>,
         parentPostId: String?,
     ): Post {
-        val input = CreatePostInput(content, imageIds, parentPostId)
+        val input = CreatePostInput(content, parentPostId)
         nextCreateError?.let { throw it }
         // createResponse は `createCalls.size` を 0-indexed として読むので、append する前に組み立てる。
         val response = createResponse(input)
@@ -134,7 +121,6 @@ class FakeTimelineRepository : TimelineRepository {
 
 data class CreatePostInput(
     val content: String,
-    val imageIds: List<String>,
     val parentPostId: String?,
 )
 

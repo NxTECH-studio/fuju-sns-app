@@ -35,33 +35,38 @@ import dev.fuju.composeApp.AppDependencies
 import dev.fuju.composeApp.nav.FujuDestination
 import dev.fuju.core.domain.AuthStatus
 import dev.fuju.core.domain.Post
+import dev.fuju.feature.admin.domain.AdminBadgesViewModel
+import dev.fuju.feature.admin.domain.AdminUserBadgesViewModel
+import dev.fuju.feature.admin.ui.AdminBadgesScreen
+import dev.fuju.feature.admin.ui.AdminUserBadgesScreen
 import dev.fuju.feature.profile.domain.FollowListKind
 import dev.fuju.feature.profile.domain.FollowListViewModel
+import dev.fuju.feature.profile.domain.MeViewModel
 import dev.fuju.feature.profile.domain.ProfileViewModel
 import dev.fuju.feature.profile.ui.FollowListScreen
-import dev.fuju.feature.profile.ui.ProfileEditScreen
+import dev.fuju.feature.profile.ui.SettingsProfileSection
 import dev.fuju.feature.profile.ui.UserProfileScreen
 import dev.fuju.feature.timeline.domain.PostDetailViewModel
 import dev.fuju.feature.timeline.domain.TimelineKind
 import dev.fuju.feature.timeline.domain.TimelineViewModel
 import dev.fuju.feature.timeline.ui.ComposerDialog
 import dev.fuju.feature.timeline.ui.GlobalTimelineScreen
-import dev.fuju.feature.timeline.ui.HomeTimelineScreen
 import dev.fuju.feature.timeline.ui.PostDetailScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
 /**
- * 認証済みユーザー向けのアプリシェル。Material3 `Scaffold` に `NavigationBar`（4 タブ）と
+ * 認証済みユーザー向けのアプリシェル。Material3 `Scaffold` に `NavigationBar` と
  * `TopAppBar`（タイトル + logout メニュー）を載せ、中央の NavHost に各タブ / 子画面を配置する。
  *
- * React 版 `src/routes/RootLayoutRoute.tsx` の構造を踏襲（top bar + nav + main）。
- * 今回は **フラット NavHost** で子画面も同じ階層に並べる。nested graph は次タスクで検討。
+ * frontend `src/routes/RootLayoutRoute.tsx` の構造を踏襲する:
+ * - start destination は **GlobalTimeline**（`/`）。Home timeline は撤去済み。
+ * - tabs: Global / Profile / Settings / Admin（isAdmin のみ）
+ * - Composer FAB は GlobalTimeline / PostDetail でのみ表示
  *
- * アイコンは Compose Multiplatform に material-icons が標準で入らないため、
- * React 版と同じくラベルテキストだけで構成する。将来アイコンが欲しくなったら
- * `material-icons-extended` などを追加する。
+ * `isAdmin` は `MeViewModel` 経由で `/me` から取得する。tabs はそれを `remember` で
+ * 観測して動的に組み立てる。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,21 +77,25 @@ fun FujuShell(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination: NavDestination? = backStackEntry?.destination
-    val currentTitle = currentDestination.titleForDestination()
     val coroutineScope = rememberCoroutineScope()
     val authSnapshot by deps.authStateMachine.state.collectAsState()
     val canLike = authSnapshot.status == AuthStatus.Authenticated
 
+    // shell 全体で共有する Me。tab 表示の isAdmin 判定 / Settings の me セクション両方で参照する。
+    val meViewModel =
+        remember(deps.profileRepository, coroutineScope) {
+            MeViewModel(deps.profileRepository, coroutineScope)
+        }
+    val meStatus by meViewModel.status.collectAsState()
+    val isAdmin = (meStatus as? MeViewModel.Status.Ready)?.me?.isAdmin == true
+
+    val tabs = remember(isAdmin) { buildShellTabs(isAdmin = isAdmin) }
+    val currentTitle = currentDestination.titleForDestination(tabs)
+
     // Composer は shell 全体から起動するため shell 自身の state に持つ。
-    // `newPost` = 新規投稿、`replyTo` = 返信先 post。両立しない。
     var composerMode by remember { mutableStateOf<ComposerMode>(ComposerMode.Closed) }
 
-    // Home/Global timeline は Shell のライフタイム中 1 つずつ保持し、タブ切り替えで
-    // 同じ state を使い続ける（React 版の Router + hooks が暗黙にやっていたキャッシュ）。
-    val homeViewModel =
-        remember(deps.timelineRepository, coroutineScope) {
-            TimelineViewModel(deps.timelineRepository, TimelineKind.Home, coroutineScope)
-        }
+    // Global timeline は Shell のライフタイム中 1 つだけ保持し、タブ復帰時に同じ state を使い続ける。
     val globalViewModel =
         remember(deps.timelineRepository, coroutineScope) {
             TimelineViewModel(deps.timelineRepository, TimelineKind.Global, coroutineScope)
@@ -98,14 +107,13 @@ fun FujuShell(
             TopAppBar(
                 title = { Text(currentTitle) },
                 actions = {
-                    ShellOverflowMenu(
-                        onLogout = { coroutineScope.launchLogout(deps) },
-                    )
+                    ShellOverflowMenu(onLogout = { coroutineScope.launchLogout(deps) })
                 },
             )
         },
         bottomBar = {
             FujuBottomBar(
+                tabs = tabs,
                 currentDestination = currentDestination,
                 onSelectTab = { tab -> navController.navigateToTab(tab) },
             )
@@ -122,21 +130,9 @@ fun FujuShell(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = FujuDestination.HomeTimeline,
+            startDestination = FujuDestination.GlobalTimeline,
             modifier = Modifier.fillMaxSize().padding(innerPadding),
         ) {
-            composable<FujuDestination.HomeTimeline> {
-                HomeTimelineScreen(
-                    viewModel = homeViewModel,
-                    canLike = canLike,
-                    onOpenPost = { post -> navController.navigate(FujuDestination.PostDetail(post.id)) },
-                    onOpenAuthor = { post ->
-                        post.author?.let { navController.navigate(FujuDestination.Profile(it.sub)) }
-                    },
-                    onReply = { post -> composerMode = ComposerMode.Reply(post) },
-                    telemetryDispatcher = deps.telemetryDispatcher,
-                )
-            }
             composable<FujuDestination.GlobalTimeline> {
                 GlobalTimelineScreen(
                     viewModel = globalViewModel,
@@ -152,14 +148,13 @@ fun FujuShell(
             composable<FujuDestination.MyProfile> {
                 val profileScope = rememberCoroutineScope()
                 val profileViewModel =
-                    remember(deps.profileRepository, deps.timelineRepository, profileScope) {
+                    remember(deps.profileRepository, profileScope) {
                         ProfileViewModel(
                             repository = deps.profileRepository,
                             targetSub = null,
                             scope = profileScope,
                         )
                     }
-                // 自分用の timeline は sub が解決されるまで作れないので、profile state の user.sub を鍵に再生成する。
                 val profileState by profileViewModel.state.collectAsState()
                 val mySub = profileState.user?.sub
                 if (mySub == null) {
@@ -192,12 +187,37 @@ fun FujuShell(
                         onOpenFollowing = { sub ->
                             navController.navigate(FujuDestination.FollowList(sub, followers = false))
                         },
-                        onOpenEdit = { navController.navigate(FujuDestination.ProfileEdit) },
+                        onOpenEdit = { navController.navigate(FujuDestination.SettingsProfile) },
                     )
                 }
             }
+            composable<FujuDestination.SettingsRoot> {
+                SettingsHubScreen(
+                    deps = deps,
+                    navController = navController,
+                )
+            }
+            composable<FujuDestination.SettingsProfile> {
+                SettingsHubScreen(
+                    deps = deps,
+                    navController = navController,
+                )
+            }
             composable<FujuDestination.AdminBadges> {
-                PlaceholderScreen(label = "Admin Badges")
+                AdminBadgesRoute(
+                    deps = deps,
+                    isAdmin = isAdmin,
+                    isMeReady = meStatus is MeViewModel.Status.Ready,
+                    navController = navController,
+                )
+            }
+            composable<FujuDestination.AdminUserBadges> {
+                AdminUserBadgesRoute(
+                    deps = deps,
+                    isAdmin = isAdmin,
+                    isMeReady = meStatus is MeViewModel.Status.Ready,
+                    navController = navController,
+                )
             }
             composable<FujuDestination.PostDetail> { backStack ->
                 val args = backStack.toRoute<FujuDestination.PostDetail>()
@@ -256,7 +276,7 @@ fun FujuShell(
                     onOpenFollowing = { sub ->
                         navController.navigate(FujuDestination.FollowList(sub, followers = false))
                     },
-                    onOpenEdit = { navController.navigate(FujuDestination.ProfileEdit) },
+                    onOpenEdit = { navController.navigate(FujuDestination.SettingsProfile) },
                 )
             }
             composable<FujuDestination.FollowList> { backStack ->
@@ -279,22 +299,6 @@ fun FujuShell(
                     },
                 )
             }
-            composable<FujuDestination.ProfileEdit> {
-                val editScope = rememberCoroutineScope()
-                val editViewModel =
-                    remember(deps.profileRepository, editScope) {
-                        ProfileViewModel(
-                            repository = deps.profileRepository,
-                            targetSub = null,
-                            scope = editScope,
-                        )
-                    }
-                ProfileEditScreen(
-                    viewModel = editViewModel,
-                    onSave = { navController.popBackStack() },
-                    onCancel = { navController.popBackStack() },
-                )
-            }
         }
     }
 
@@ -304,7 +308,7 @@ fun FujuShell(
             ComposerDialog(
                 onDismiss = { composerMode = ComposerMode.Closed },
                 onSubmit = { content ->
-                    homeViewModel.createPost(content = content)
+                    globalViewModel.createPost(content = content)
                 },
             )
         is ComposerMode.Reply ->
@@ -312,16 +316,126 @@ fun FujuShell(
                 parentHint = mode.target.author?.displayName ?: "@${mode.target.userId}",
                 onDismiss = { composerMode = ComposerMode.Closed },
                 onSubmit = { content ->
-                    // 返信はタイムラインの先頭には出ず、詳細画面側で append される想定。
-                    // ここでは Repository 直叩きで投稿するだけ。
                     deps.timelineRepository.createPost(
                         content = content,
-                        imageIds = emptyList(),
                         parentPostId = mode.target.id,
                     )
                 },
             )
     }
+}
+
+/**
+ * 設定ハブ画面（`/settings` または `/settings/profile`）。
+ * 現状の項目はプロフィールのみなので、左ペインから選んでも常に同じセクションを表示する。
+ */
+@Composable
+private fun SettingsHubScreen(
+    deps: AppDependencies,
+    navController: NavHostController,
+) {
+    val items = remember { listOf(SettingsItem(id = "profile", label = "プロフィール")) }
+    val activeId = "profile"
+    val scope = rememberCoroutineScope()
+    val profileViewModel =
+        remember(deps.profileRepository, scope) {
+            ProfileViewModel(
+                repository = deps.profileRepository,
+                targetSub = null,
+                scope = scope,
+            )
+        }
+    SettingsShell(
+        items = items,
+        activeItemId = activeId,
+        onSelect = { /* 単一項目なので no-op */ },
+    ) {
+        SettingsProfileSection(
+            viewModel = profileViewModel,
+            onSave = { sub ->
+                navController.navigate(FujuDestination.Profile(sub)) {
+                    popUpTo(FujuDestination.GlobalTimeline) {
+                        saveState = true
+                    }
+                }
+            },
+            onCancel = { navController.popBackStack() },
+        )
+    }
+}
+
+@Composable
+private fun AdminBadgesRoute(
+    deps: AppDependencies,
+    isAdmin: Boolean,
+    isMeReady: Boolean,
+    navController: NavHostController,
+) {
+    if (!isMeReady) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    if (!isAdmin) {
+        // 認可されていないアクセスは GlobalTimeline へ replace。frontend と同じ挙動。
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            navController.navigate(FujuDestination.GlobalTimeline) {
+                popUpTo(FujuDestination.GlobalTimeline) { inclusive = true }
+            }
+        }
+        return
+    }
+    val scope = rememberCoroutineScope()
+    val viewModel =
+        remember(deps.adminRepository, scope) {
+            AdminBadgesViewModel(deps.adminRepository, scope)
+        }
+    AdminBadgesScreen(
+        viewModel = viewModel,
+        onOpenUserBadges = { navController.navigate(FujuDestination.AdminUserBadges) },
+        // badge_key は user-badges 画面で手入力する想定。frontend のクエリ連携は未対応。
+        onGrantToUser = {
+            navController.navigate(FujuDestination.AdminUserBadges)
+        },
+    )
+}
+
+@Composable
+private fun AdminUserBadgesRoute(
+    deps: AppDependencies,
+    isAdmin: Boolean,
+    isMeReady: Boolean,
+    navController: NavHostController,
+) {
+    if (!isMeReady) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    if (!isAdmin) {
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            navController.navigate(FujuDestination.GlobalTimeline) {
+                popUpTo(FujuDestination.GlobalTimeline) { inclusive = true }
+            }
+        }
+        return
+    }
+    val scope = rememberCoroutineScope()
+    val viewModel =
+        remember(deps.adminRepository, deps.profileRepository, scope) {
+            AdminUserBadgesViewModel(
+                adminRepository = deps.adminRepository,
+                profileRepository = deps.profileRepository,
+                scope = scope,
+            )
+        }
+    AdminUserBadgesScreen(
+        viewModel = viewModel,
+        initialBadgeKey = "",
+        onBack = { navController.navigate(FujuDestination.AdminBadges) },
+    )
 }
 
 private sealed interface ComposerMode {
@@ -334,14 +448,18 @@ private sealed interface ComposerMode {
     ) : ComposerMode
 }
 
-/** shell の 4 タブ定義。表示順 = NavigationBar の左→右。 */
-private val ShellTabs: List<ShellTab> =
-    listOf(
-        ShellTab(FujuDestination.HomeTimeline, FujuDestination.HomeTimeline::class, "Home"),
-        ShellTab(FujuDestination.GlobalTimeline, FujuDestination.GlobalTimeline::class, "Global"),
-        ShellTab(FujuDestination.MyProfile, FujuDestination.MyProfile::class, "Profile"),
-        ShellTab(FujuDestination.AdminBadges, FujuDestination.AdminBadges::class, "Admin"),
-    )
+/**
+ * shell の NavigationBar に出すタブ。`isAdmin = true` の時だけ Admin タブが追加される。
+ */
+private fun buildShellTabs(isAdmin: Boolean): List<ShellTab> =
+    buildList {
+        add(ShellTab(FujuDestination.GlobalTimeline, FujuDestination.GlobalTimeline::class, "Global"))
+        add(ShellTab(FujuDestination.MyProfile, FujuDestination.MyProfile::class, "Profile"))
+        add(ShellTab(FujuDestination.SettingsRoot, FujuDestination.SettingsRoot::class, "Settings"))
+        if (isAdmin) {
+            add(ShellTab(FujuDestination.AdminBadges, FujuDestination.AdminBadges::class, "Admin"))
+        }
+    }
 
 private data class ShellTab(
     val route: FujuDestination,
@@ -351,13 +469,13 @@ private data class ShellTab(
 
 @Composable
 private fun FujuBottomBar(
+    tabs: List<ShellTab>,
     currentDestination: NavDestination?,
     onSelectTab: (FujuDestination) -> Unit,
 ) {
     NavigationBar {
-        ShellTabs.forEach { tab ->
-            val selected =
-                currentDestination?.hierarchy?.any { dest -> dest.hasRoute(tab.routeClass) } == true
+        tabs.forEach { tab ->
+            val selected = isTabSelected(tab.routeClass, currentDestination)
             NavigationBarItem(
                 selected = selected,
                 onClick = { onSelectTab(tab.route) },
@@ -375,6 +493,28 @@ private fun FujuBottomBar(
  */
 private val NavDestination.hierarchy: Sequence<NavDestination>
     get() = generateSequence(this) { it.parent }
+
+/**
+ * 「現在の destination がこのタブに属するか」を判定する。
+ * Settings / Admin のサブ destination もそれぞれの親タブ選択中として扱う。
+ */
+private fun isTabSelected(
+    routeClass: KClass<out FujuDestination>,
+    currentDestination: NavDestination?,
+): Boolean {
+    if (currentDestination == null) return false
+    val direct = currentDestination.hierarchy.any { it.hasRoute(routeClass) }
+    if (direct) return true
+    val isSettingsTab = routeClass == FujuDestination.SettingsRoot::class
+    if (isSettingsTab && currentDestination.hasRoute(FujuDestination.SettingsProfile::class)) {
+        return true
+    }
+    val isAdminTab = routeClass == FujuDestination.AdminBadges::class
+    if (isAdminTab && currentDestination.hasRoute(FujuDestination.AdminUserBadges::class)) {
+        return true
+    }
+    return false
+}
 
 @Composable
 private fun ShellOverflowMenu(onLogout: () -> Unit) {
@@ -395,49 +535,35 @@ private fun ShellOverflowMenu(onLogout: () -> Unit) {
     }
 }
 
-@Composable
-private fun PlaceholderScreen(label: String) {
-    androidx.compose.foundation.layout.Column(
-        modifier = Modifier.fillMaxSize().padding(dev.fuju.core.ui.theme.FujuDimens.SpaceL),
-    ) {
-        Text(text = "Fuju ($label)", style = MaterialTheme.typography.headlineMedium)
-        dev.fuju.core.ui.components.EmptyState(
-            title = "準備中",
-            description = "フェーズ 3 以降で admin を接続します。",
-        )
+private fun NavDestination?.titleForDestination(tabs: List<ShellTab>): String {
+    if (this == null) return "Fuju"
+    val tabLabel = tabs.firstOrNull { tab -> this.hasRoute(tab.routeClass) }?.label
+    return tabLabel ?: when {
+        hasRoute(FujuDestination.PostDetail::class) -> "投稿"
+        hasRoute(FujuDestination.Profile::class) -> "プロフィール"
+        hasRoute(FujuDestination.FollowList::class) -> "フォロー一覧"
+        hasRoute(FujuDestination.SettingsProfile::class) -> "プロフィール編集"
+        hasRoute(FujuDestination.AdminUserBadges::class) -> "Admin / ユーザーバッジ"
+        else -> "Fuju"
     }
 }
 
-private fun NavDestination?.titleForDestination(): String {
-    if (this == null) return "Fuju"
-    return ShellTabs.firstOrNull { tab -> this.hasRoute(tab.routeClass) }?.label
-        ?: when {
-            hasRoute(FujuDestination.PostDetail::class) -> "投稿"
-            hasRoute(FujuDestination.Profile::class) -> "プロフィール"
-            hasRoute(FujuDestination.FollowList::class) -> "フォロー一覧"
-            hasRoute(FujuDestination.ProfileEdit::class) -> "プロフィール編集"
-            else -> "Fuju"
-        }
-}
-
 /**
- * 新規投稿 FAB を表示するのはタイムラインの 2 タブだけ。詳細画面は画面内の
- * 返信ボタンから composer を起動する想定のため FAB は不要。
+ * 新規投稿 FAB を表示するのは Global timeline と Post 詳細だけ。詳細画面は画面内の
+ * 返信ボタンと両立させる（FAB タップ = 新規投稿、画面内ボタン = 返信）。
  */
 private fun NavDestination.isComposerFabVisible(): Boolean =
-    hasRoute(FujuDestination.HomeTimeline::class) || hasRoute(FujuDestination.GlobalTimeline::class)
+    hasRoute(FujuDestination.GlobalTimeline::class) ||
+        hasRoute(FujuDestination.PostDetail::class)
 
 /**
  * タブ間遷移時に back stack を state ごと保存/復元する。
- * start destination (= [FujuDestination.HomeTimeline]) まで pop し、
- * 同じタブを再タップした時に重複エントリを作らないよう launchSingleTop を立てる。
- *
- * JetBrains の KMP fork では `NavGraph.findStartDestination().id` が commonMain に
- * 露出しないため、型安全 route を引数に取る `popUpTo<T>` オーバーロードを使う。
+ * start destination まで pop し、同じタブを再タップした時に重複エントリを作らないよう
+ * launchSingleTop を立てる。
  */
 private fun NavHostController.navigateToTab(tab: FujuDestination) {
     navigate(tab) {
-        popUpTo<FujuDestination.HomeTimeline> {
+        popUpTo<FujuDestination.GlobalTimeline> {
             saveState = true
         }
         launchSingleTop = true

@@ -8,6 +8,8 @@ import dev.fuju.core.storage.InMemorySessionHintStore
 import dev.fuju.core.storage.InMemoryTokenStorage
 import dev.fuju.core.telemetry.TelemetryDispatcher
 import dev.fuju.core.telemetry.TelemetryHttpClient
+import dev.fuju.feature.admin.data.AdminRepositoryImpl
+import dev.fuju.feature.admin.domain.AdminRepository
 import dev.fuju.feature.auth.data.AuthRepository
 import dev.fuju.feature.auth.domain.AuthConfig
 import dev.fuju.feature.auth.domain.AuthStateMachine
@@ -49,6 +51,7 @@ class AppContainer(
 
     val timelineRepository: TimelineRepository = TimelineRepositoryImpl(apiHttpClient)
     val profileRepository: ProfileRepository = ProfileRepositoryImpl(apiHttpClient)
+    val adminRepository: AdminRepository = AdminRepositoryImpl(apiHttpClient)
 
     // Telemetry direct to fuju-emotion-model. user_id is stamped at flush
     // time from the AuthCore sub of the currently signed-in user; reading
@@ -72,6 +75,7 @@ class AppContainer(
             authStateMachine = authStateMachine,
             timelineRepository = timelineRepository,
             profileRepository = profileRepository,
+            adminRepository = adminRepository,
             telemetryDispatcher = telemetryDispatcher,
         )
 

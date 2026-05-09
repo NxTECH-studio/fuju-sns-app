@@ -135,15 +135,16 @@ class TimelineViewModel(
     }
 
     /**
-     * テキスト + 画像 + 親 post id で新規投稿を作成。成功時は先頭に prepend。
+     * テキスト + 親 post id で新規投稿を作成。成功時は先頭に prepend。
      * 戻り値は呼び出し側で navigate / toast などに使う想定。失敗時は例外。
+     *
+     * 画像投稿はフロントエンド本体で撤去済みのため、ここからも取り除く。
      */
     suspend fun createPost(
         content: String,
-        imageIds: List<String> = emptyList(),
         parentPostId: String? = null,
     ): Post {
-        val created = repository.createPost(content, imageIds, parentPostId)
+        val created = repository.createPost(content, parentPostId)
         if (parentPostId == null) {
             _state.update { it.copy(items = listOf(created) + it.items) }
         }
@@ -164,7 +165,6 @@ class TimelineViewModel(
     private suspend fun fetchPage(cursor: String?): PostPage {
         val query = TimelineQuery(cursor = cursor, limit = pageSize)
         return when (val k = kind) {
-            TimelineKind.Home -> repository.getHome(query)
             TimelineKind.Global -> repository.getGlobal(query)
             is TimelineKind.User -> repository.getUser(k.sub, query)
         }

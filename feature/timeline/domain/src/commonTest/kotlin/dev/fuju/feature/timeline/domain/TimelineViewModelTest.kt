@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimelineViewModelTest {
     @Test
-    fun initialLoadFetchesHomeAndEmitsItems() =
+    fun initialLoadFetchesGlobalAndEmitsItems() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
             val page =
@@ -23,9 +23,9 @@ class TimelineViewModelTest {
                     items = listOf(samplePost("p1"), samplePost("p2")),
                     nextCursor = "cursor-2",
                 )
-            repo.enqueueHome(page)
+            repo.enqueueGlobal(page)
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
 
             advanceUntilIdle()
 
@@ -34,18 +34,18 @@ class TimelineViewModelTest {
             assertEquals("cursor-2", state.nextCursor)
             assertFalse(state.loading)
             assertNull(state.error)
-            assertEquals(1, repo.homeCalls.size)
-            assertNull(repo.homeCalls.first().cursor)
+            assertEquals(1, repo.globalCalls.size)
+            assertNull(repo.globalCalls.first().cursor)
         }
 
     @Test
     fun loadMoreAppendsNextPageAndCarriesCursor() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(PostPage(items = listOf(samplePost("p1")), nextCursor = "cursor-2"))
-            repo.enqueueHome(PostPage(items = listOf(samplePost("p2"), samplePost("p3")), nextCursor = null))
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("p1")), nextCursor = "cursor-2"))
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("p2"), samplePost("p3")), nextCursor = null))
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.loadMore()
@@ -55,34 +55,34 @@ class TimelineViewModelTest {
             assertEquals(listOf("p1", "p2", "p3"), state.items.map { it.id })
             assertNull(state.nextCursor)
             assertFalse(state.canLoadMore)
-            assertEquals(2, repo.homeCalls.size)
-            assertEquals("cursor-2", repo.homeCalls[1].cursor)
+            assertEquals(2, repo.globalCalls.size)
+            assertEquals("cursor-2", repo.globalCalls[1].cursor)
         }
 
     @Test
     fun loadMoreSkippedWhenNoCursor() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(PostPage(items = listOf(samplePost("only")), nextCursor = null))
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("only")), nextCursor = null))
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.loadMore()
             advanceUntilIdle()
 
             // 追加の API 呼び出しが起きない
-            assertEquals(1, repo.homeCalls.size)
+            assertEquals(1, repo.globalCalls.size)
         }
 
     @Test
     fun refreshResetsCursorAndRefetches() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(PostPage(items = listOf(samplePost("old-1")), nextCursor = "c-old"))
-            repo.enqueueHome(PostPage(items = listOf(samplePost("new-1"), samplePost("new-2")), nextCursor = null))
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("old-1")), nextCursor = "c-old"))
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("new-1"), samplePost("new-2")), nextCursor = null))
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.refresh()
@@ -91,8 +91,8 @@ class TimelineViewModelTest {
             val state = vm.state.value
             assertEquals(listOf("new-1", "new-2"), state.items.map { it.id })
             assertNull(state.nextCursor)
-            assertEquals(2, repo.homeCalls.size)
-            assertNull(repo.homeCalls[1].cursor)
+            assertEquals(2, repo.globalCalls.size)
+            assertNull(repo.globalCalls[1].cursor)
         }
 
     @Test
@@ -101,14 +101,14 @@ class TimelineViewModelTest {
             val repo = FakeTimelineRepository()
             val gate = CompletableDeferred<Unit>()
             repo.likeGate = gate
-            repo.enqueueHome(
+            repo.enqueueGlobal(
                 PostPage(
                     items = listOf(samplePost("p1", likedByViewer = false, likesCount = 3)),
                     nextCursor = null,
                 ),
             )
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.state.test {
@@ -134,7 +134,7 @@ class TimelineViewModelTest {
     fun toggleLikeRollbackOnFailure() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(
+            repo.enqueueGlobal(
                 PostPage(
                     items = listOf(samplePost("p1", likedByViewer = true, likesCount = 5)),
                     nextCursor = null,
@@ -142,7 +142,7 @@ class TimelineViewModelTest {
             )
             repo.nextUnlikeError = RuntimeException("boom")
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             val before =
@@ -165,8 +165,8 @@ class TimelineViewModelTest {
     fun createPostPrependsToItems() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(PostPage(items = listOf(samplePost("old")), nextCursor = null))
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("old")), nextCursor = null))
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.createPost(content = "hi")
@@ -184,8 +184,8 @@ class TimelineViewModelTest {
     fun createReplyDoesNotPrependToTimeline() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHome(PostPage(items = listOf(samplePost("root")), nextCursor = null))
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            repo.enqueueGlobal(PostPage(items = listOf(samplePost("root")), nextCursor = null))
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             vm.createPost(content = "reply", parentPostId = "root")
@@ -203,9 +203,9 @@ class TimelineViewModelTest {
     fun errorMessageOnFailedInitialLoad() =
         runTest(StandardTestDispatcher()) {
             val repo = FakeTimelineRepository()
-            repo.enqueueHomeError(RuntimeException("network down"))
+            repo.enqueueGlobalError(RuntimeException("network down"))
 
-            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Home, scope = this)
+            val vm = TimelineViewModel(repository = repo, kind = TimelineKind.Global, scope = this)
             advanceUntilIdle()
 
             val state = vm.state.value

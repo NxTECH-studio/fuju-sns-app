@@ -40,8 +40,6 @@ import kotlinx.serialization.Serializable
 class TimelineRepositoryImpl(
     private val client: HttpClient,
 ) : TimelineRepository {
-    override suspend fun getHome(query: TimelineQuery): PostPage = fetchTimeline("/timeline/home", query)
-
     override suspend fun getGlobal(query: TimelineQuery): PostPage = fetchTimeline("/timeline/global", query)
 
     override suspend fun getUser(
@@ -81,7 +79,6 @@ class TimelineRepositoryImpl(
 
     override suspend fun createPost(
         content: String,
-        imageIds: List<String>,
         parentPostId: String?,
     ): Post =
         wrap {
@@ -89,7 +86,7 @@ class TimelineRepositoryImpl(
                 client
                     .post("/posts") {
                         contentType(ContentType.Application.Json)
-                        setBody(CreatePostDto(content = content, imageIds = imageIds, parentPostId = parentPostId))
+                        setBody(CreatePostDto(content = content, parentPostId = parentPostId))
                     }.also { it.throwIfError() }
                     .body()
             res.data.toDomain()
@@ -213,6 +210,5 @@ internal data class OGPDto(
 @Serializable
 internal data class CreatePostDto(
     val content: String,
-    @SerialName("image_ids") val imageIds: List<String>,
     @SerialName("parent_post_id") val parentPostId: String?,
 )

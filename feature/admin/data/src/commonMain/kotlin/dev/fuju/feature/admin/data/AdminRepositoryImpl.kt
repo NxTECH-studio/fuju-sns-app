@@ -13,26 +13,40 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
-import io.ktor.client.request.patch
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Backend `/v1/admin/badges` 系を叩く実装。frontend `../frontend/src/api/endpoints/admin.ts`
+ * を移植。
+ *
+ * envelope 構造に注意:
+ * - list: `{ data: Badge[] }`
+ * - create / update: `{ data: Badge }`
+ * - grant: `{ data: { status, user_id, badge: Badge } }` → badge を取り出す
+ * - revoke / delete: 204 で空応答
+ *
+ * REST verb は frontend と揃える: 更新は **PUT**（旧実装は PATCH だった）。
+ */
 class AdminRepositoryImpl(
     private val client: HttpClient,
 ) : AdminRepository {
     override suspend fun listBadges(): List<Badge> =
         wrap {
-            val list: List<BadgeDto> = client.get("/v1/admin/badges").also { it.throwIfError() }.body()
-            list.map { it.toDomain() }
+            val res: BadgeListEnvelopeDto =
+                client.get("/v1/admin/badges").also { it.throwIfError() }.body()
+            res.data.map { it.toDomain() }
         }
 
     override suspend fun createBadge(input: CreateBadgeInput): Badge =
         wrap {
-            val dto: BadgeDto =
+            val res: BadgeEnvelopeDto =
                 client
                     .post("/v1/admin/badges") {
                         contentType(ContentType.Application.Json)
@@ -40,15 +54,15 @@ class AdminRepositoryImpl(
                             CreateBadgeDto(
                                 key = input.key,
                                 label = input.label,
-                                description = input.description,
-                                iconUrl = input.iconUrl,
+                                description = input.description.takeIf { it.isNotEmpty() },
+                                iconUrl = input.iconUrl.takeIf { it.isNotEmpty() },
                                 color = input.color,
                                 priority = input.priority,
                             ),
                         )
                     }.also { it.throwIfError() }
                     .body()
-            dto.toDomain()
+            res.data.toDomain()
         }
 
     override suspend fun updateBadge(
@@ -56,9 +70,9 @@ class AdminRepositoryImpl(
         input: UpdateBadgeInput,
     ): Badge =
         wrap {
-            val dto: BadgeDto =
+            val res: BadgeEnvelopeDto =
                 client
-                    .patch("/v1/admin/badges/$id") {
+                    .put("/v1/admin/badges/${id.encodeURLPathPart()}") {
                         contentType(ContentType.Application.Json)
                         setBody(
                             UpdateBadgeDto(
@@ -71,40 +85,43 @@ class AdminRepositoryImpl(
                         )
                     }.also { it.throwIfError() }
                     .body()
-            dto.toDomain()
+            res.data.toDomain()
         }
 
     override suspend fun deleteBadge(id: String) {
-        wrap { client.delete("/v1/admin/badges/$id").throwIfErrorOrDiscard() }
+        wrap { client.delete("/v1/admin/badges/${id.encodeURLPathPart()}").throwIfErrorOrDiscard() }
     }
 
     override suspend fun grantBadge(
         userSub: String,
         input: GrantBadgeInput,
-    ) {
+    ): Badge =
         wrap {
-            client
-                .post("/v1/admin/users/$userSub/badges") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        GrantBadgeDto(
-                            badgeKey = input.badgeKey,
-                            expiresAt = input.expiresAt,
-                            reason = input.reason,
-                        ),
-                    )
-                }.throwIfErrorOrDiscard()
+            val res: GrantBadgeEnvelopeDto =
+                client
+                    .post("/v1/admin/users/${userSub.encodeURLPathPart()}/badges") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            GrantBadgeDto(
+                                badgeKey = input.badgeKey,
+                                expiresAt = input.expiresAt,
+                                reason = input.reason,
+                            ),
+                        )
+                    }.also { it.throwIfError() }
+                    .body()
+            res.data.badge.toDomain()
         }
-    }
 
     override suspend fun revokeBadge(
         userSub: String,
-        badgeKey: String,
+        badgeId: String,
     ) {
         wrap {
             client
-                .delete("/v1/admin/users/$userSub/badges/$badgeKey")
-                .throwIfErrorOrDiscard()
+                .delete(
+                    "/v1/admin/users/${userSub.encodeURLPathPart()}/badges/${badgeId.encodeURLPathPart()}",
+                ).throwIfErrorOrDiscard()
         }
     }
 
@@ -112,11 +129,33 @@ class AdminRepositoryImpl(
 }
 
 @Serializable
+internal data class BadgeEnvelopeDto(
+    val data: BadgeDto,
+)
+
+@Serializable
+internal data class BadgeListEnvelopeDto(
+    val data: List<BadgeDto>,
+)
+
+@Serializable
+internal data class GrantBadgeEnvelopeDto(
+    val data: GrantBadgePayloadDto,
+)
+
+@Serializable
+internal data class GrantBadgePayloadDto(
+    val status: String = "granted",
+    @SerialName("user_id") val userId: String,
+    val badge: BadgeDto,
+)
+
+@Serializable
 internal data class CreateBadgeDto(
     val key: String,
     val label: String,
-    val description: String,
-    @SerialName("icon_url") val iconUrl: String,
+    val description: String? = null,
+    @SerialName("icon_url") val iconUrl: String? = null,
     val color: String,
     val priority: Int,
 )

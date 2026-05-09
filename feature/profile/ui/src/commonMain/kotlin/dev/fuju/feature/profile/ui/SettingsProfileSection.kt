@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,8 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import dev.fuju.core.domain.Me
 import dev.fuju.core.domain.UpdateProfileInput
 import dev.fuju.core.ui.components.ErrorFallback
 import dev.fuju.core.ui.components.FujuPrimaryButton
@@ -36,23 +35,23 @@ import dev.fuju.feature.profile.domain.sanitizeError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+private const val BIO_MAX_LEN = 500
+private const val BANNER_MAX_LEN = 1024
+
 /**
- * 自分のプロフィール編集画面。React 版 `routes/MyProfileEditRoute.tsx` に相当。
+ * 設定 > プロフィール編集セクション。
+ * frontend `routes/settings/SettingsProfileSection.tsx` を写経。
  *
- * 編集できるのは `bio` と `banner_url` の 2 項目のみ。swagger の `UpdateUserProfileRequest`
- * に合わせて、display_name / display_id / icon_url は AuthCore 側の管理画面に委譲する旨を
- * 画面上に案内する。
+ * `bio` (max 500) と `bannerUrl` (max 1024) のみ編集可能。display_name / display_id /
+ * アイコンは AuthCore 側で管理する旨を明記する。
  *
- * アイコン / バナー画像のアップロード UI は本 PR には含めない（`PUT /v1/user/icon` の multipart
- * 送信は expect/actual の file picker が必要なため別タスク）。
- *
- * ViewModel は状態を集約する 1 箇所だけで扱い、内部の form コンポーネントには plain 型で
- * 値と callback だけを渡す（Compose Rules の "hoist all the things"）。
+ * 保存成功時は [onSave] を経由してユーザーページへ navigate する想定（呼び出し側で
+ * `/users/{sub}` に飛ばす）。
  */
 @Composable
-fun ProfileEditScreen(
+fun SettingsProfileSection(
     viewModel: ProfileViewModel,
-    onSave: (Me) -> Unit,
+    onSave: (sub: String) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -72,42 +71,41 @@ fun ProfileEditScreen(
                 modifier = modifier.fillMaxSize(),
             )
         else ->
-            ProfileEditForm(
-                me = me,
+            SettingsProfileForm(
+                seedSub = me.sub,
+                seedBio = me.bio,
+                seedBannerUrl = me.bannerUrl,
                 remoteError = state.error,
-                onSubmit = { input -> viewModel.updateProfile(input) },
-                onSave = onSave,
+                onSubmit = { input ->
+                    viewModel.updateProfile(input)
+                    onSave(me.sub)
+                },
                 onCancel = onCancel,
                 modifier = modifier,
             )
     }
 }
 
-/**
- * 編集フォーム本体。ViewModel には触れず、外から渡された [onSubmit] を suspend で呼び、
- * 成功 / 失敗で state を切り替える。
- */
 @Composable
-private fun ProfileEditForm(
-    me: Me,
+private fun SettingsProfileForm(
+    seedSub: String,
+    seedBio: String,
+    seedBannerUrl: String,
     remoteError: String?,
-    onSubmit: suspend (UpdateProfileInput) -> Me,
-    onSave: (Me) -> Unit,
+    onSubmit: suspend (UpdateProfileInput) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // rememberSaveable でプロセス death を跨いだ入力復元を許す。me.sub が変わったら seed しなおす。
-    var bio by rememberSaveable(me.sub) { mutableStateOf(me.bio) }
-    var bannerUrl by rememberSaveable(me.sub) { mutableStateOf(me.bannerUrl) }
+    var bio by rememberSaveable(seedSub) { mutableStateOf(seedBio) }
+    var bannerUrl by rememberSaveable(seedSub) { mutableStateOf(seedBannerUrl) }
     var busy by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
-    // me が後から更新された（editor を開いた後に reload が走った等）場合に値を同期する。
-    LaunchedEffect(me.sub, me.bio, me.bannerUrl) {
+    LaunchedEffect(seedSub, seedBio, seedBannerUrl) {
         if (!busy) {
-            bio = me.bio
-            bannerUrl = me.bannerUrl
+            bio = seedBio
+            bannerUrl = seedBannerUrl
         }
     }
 
@@ -118,13 +116,13 @@ private fun ProfileEditForm(
         modifier =
             modifier
                 .fillMaxSize()
-                .verticalScroll(scroll)
-                .padding(FujuDimens.SpaceL),
+                .verticalScroll(scroll),
         verticalArrangement = Arrangement.spacedBy(FujuDimens.SpaceM),
     ) {
         Text(
             text = "プロフィール編集",
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
         )
         Text(
             text = "display_name / display_id / アイコンは AuthCore 側で編集してください。",
@@ -132,14 +130,14 @@ private fun ProfileEditForm(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         FujuTextField(
-            label = "自己紹介 (bio, 最大 500 文字)",
+            label = "自己紹介 (bio, 最大 $BIO_MAX_LEN 文字)",
             value = bio,
             onValueChange = { next -> if (next.length <= BIO_MAX_LEN) bio = next },
             singleLine = false,
             enabled = !busy,
         )
         FujuTextField(
-            label = "バナー画像 URL",
+            label = "バナー画像 URL (最大 $BANNER_MAX_LEN 文字)",
             value = bannerUrl,
             onValueChange = { next -> if (next.length <= BANNER_MAX_LEN) bannerUrl = next },
             placeholder = "https://...",
@@ -158,7 +156,7 @@ private fun ProfileEditForm(
             horizontalArrangement = Arrangement.spacedBy(FujuDimens.SpaceS, Alignment.End),
         ) {
             FujuSecondaryButton(text = "キャンセル", onClick = onCancel, enabled = !busy)
-            val hasChanges = bio != me.bio || bannerUrl != me.bannerUrl
+            val hasChanges = bio != seedBio || bannerUrl != seedBannerUrl
             FujuPrimaryButton(
                 text = if (busy) "保存中..." else "保存",
                 loading = busy,
@@ -166,16 +164,14 @@ private fun ProfileEditForm(
                 onClick = {
                     localError = null
                     busy = true
-                    coroutineScope.launch {
+                    scope.launch {
                         try {
-                            // 空文字列を送ると backend の URI validation で 400 の可能性があるので null に寄せる。
                             val input =
                                 UpdateProfileInput(
                                     bio = bio,
                                     bannerUrl = bannerUrl.takeIf { it.isNotBlank() },
                                 )
-                            val next = onSubmit(input)
-                            onSave(next)
+                            onSubmit(input)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (t: Throwable) {
@@ -189,6 +185,3 @@ private fun ProfileEditForm(
         }
     }
 }
-
-private const val BIO_MAX_LEN = 500
-private const val BANNER_MAX_LEN = 1024
