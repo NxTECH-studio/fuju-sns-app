@@ -19,7 +19,7 @@ interface ProfileRepository {
     suspend fun listUsers(
         limit: Int = 20,
         offset: Int = 0,
-    ): List<ProfileUser>
+    ): UserListPage
 
     suspend fun getUser(sub: String): ProfileUser
 
@@ -65,4 +65,14 @@ data class FollowListQuery(
 data class FollowListPage(
     val items: List<ProfileUser>,
     val nextCursor: String?,
+)
+
+/**
+ * `GET /v1/users` の offset paging 応答。`UserListResponse` の domain 表現。
+ */
+data class UserListPage(
+    val items: List<ProfileUser>,
+    val limit: Int,
+    val offset: Int,
+    val total: Int,
 )

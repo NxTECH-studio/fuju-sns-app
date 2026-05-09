@@ -138,11 +138,8 @@ class PostDetailViewModel(
     }
 
     /** 返信を作成。成功時は末尾に append + 親 post の replies_count を +1。 */
-    suspend fun createReply(
-        content: String,
-        imageIds: List<String> = emptyList(),
-    ): Post {
-        val reply = repository.createPost(content, imageIds, postId)
+    suspend fun createReply(content: String): Post {
+        val reply = repository.createPost(content, postId)
         _state.update { s ->
             s.copy(
                 post = s.post?.copy(repliesCount = s.post.repliesCount + 1),

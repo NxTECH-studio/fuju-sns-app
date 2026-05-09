@@ -98,17 +98,6 @@ data class Post(
 )
 
 @Serializable
-data class UploadedImage(
-    val id: String,
-    val fileName: String,
-    val mimeType: String,
-    val fileSize: Long,
-    val publicUrl: String,
-    val userId: String,
-    val createdAt: String,
-)
-
-@Serializable
 data class FollowResult(
     val following: Boolean,
     val followersCount: Int,

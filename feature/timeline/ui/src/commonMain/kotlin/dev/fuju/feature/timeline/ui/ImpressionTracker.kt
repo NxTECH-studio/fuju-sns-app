@@ -38,7 +38,7 @@ import kotlin.time.Instant
  *
  * Lifecycle:
  *   - The hook is a Composable; bind it inside [TimelineScreen] /
- *     [HomeTimelineScreen] etc., passing the [LazyListState] used by
+ *     [GlobalTimelineScreen] etc., passing the [LazyListState] used by
  *     the LazyColumn and a function that resolves index → post id.
  *   - When the calling composable leaves composition, the LaunchedEffect
  *     is cancelled and the per-id state map is dropped. view_end is

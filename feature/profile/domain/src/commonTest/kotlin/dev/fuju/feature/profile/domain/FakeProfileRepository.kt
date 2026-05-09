@@ -84,9 +84,9 @@ class FakeProfileRepository : ProfileRepository {
     override suspend fun listUsers(
         limit: Int,
         offset: Int,
-    ): List<ProfileUser> {
+    ): UserListPage {
         listUsersCalls += limit to offset
-        return emptyList()
+        return UserListPage(items = emptyList(), limit = limit, offset = offset, total = 0)
     }
 
     override suspend fun getUser(sub: String): ProfileUser {

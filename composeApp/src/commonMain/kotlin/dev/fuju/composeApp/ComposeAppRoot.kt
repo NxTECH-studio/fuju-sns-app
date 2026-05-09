@@ -87,12 +87,13 @@ private fun UnauthenticatedRoot(deps: AppDependencies) {
 }
 
 /**
- * 認証済みルート。`FujuShell` が NavHost を内包し、4 タブと子画面を配置する。
- * shell 側は start destination を `HomeTimeline` 固定とする（初期は常にホームタブ）。
+ * 認証済みルート。`FujuShell` が NavHost を内包し、各タブと子画面を配置する。
+ * shell 側は start destination を `GlobalTimeline` 固定とする（frontend `routes/router.tsx`
+ * の index と同様にグローバルタイムラインを起動時画面とする）。
  *
  * `rememberNavController()` をここで呼んでいるので、認証状態が Unauthenticated に
  * 遷移した時にこの Composable が退場し、NavHost の内部状態もそのまま GC される。
- * 結果として「ログアウト → 再ログイン時にホームタブから始まる」挙動になる。
+ * 結果として「ログアウト → 再ログイン時に Global タイムラインから始まる」挙動になる。
  */
 @Composable
 private fun AuthenticatedRoot(deps: AppDependencies) {
@@ -129,5 +130,6 @@ class AppDependencies(
     val authStateMachine: AuthStateMachine,
     val timelineRepository: dev.fuju.feature.timeline.domain.TimelineRepository,
     val profileRepository: dev.fuju.feature.profile.domain.ProfileRepository,
+    val adminRepository: dev.fuju.feature.admin.domain.AdminRepository,
     val telemetryDispatcher: dev.fuju.core.telemetry.TelemetryDispatcher? = null,
 )

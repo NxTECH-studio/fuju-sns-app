@@ -10,6 +10,7 @@ import dev.fuju.core.network.wrapAsAuthException
 import dev.fuju.feature.profile.domain.FollowListPage
 import dev.fuju.feature.profile.domain.FollowListQuery
 import dev.fuju.feature.profile.domain.ProfileRepository
+import dev.fuju.feature.profile.domain.UserListPage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -53,7 +54,7 @@ class ProfileRepositoryImpl(
     override suspend fun listUsers(
         limit: Int,
         offset: Int,
-    ): List<ProfileUser> =
+    ): UserListPage =
         wrap {
             val res: UserListResponseDto =
                 client
@@ -62,7 +63,12 @@ class ProfileRepositoryImpl(
                         parameter("offset", offset)
                     }.also { it.throwIfError() }
                     .body()
-            res.data.map { it.toDomain() }
+            UserListPage(
+                items = res.data.map { it.toDomain() },
+                limit = res.limit,
+                offset = res.offset,
+                total = res.total,
+            )
         }
 
     override suspend fun getUser(sub: String): ProfileUser =

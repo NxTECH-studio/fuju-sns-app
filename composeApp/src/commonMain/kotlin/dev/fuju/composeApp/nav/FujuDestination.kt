@@ -7,22 +7,33 @@ import kotlinx.serialization.Serializable
  * `composable<T>(...)` + `kotlinx.serialization` と組み合わせて使う。
  *
  * Destination のインスタンスをそのまま `NavController.navigate(dest)` に渡せる。
+ *
+ * frontend `../frontend/src/routes/router.tsx` の URL 設計に揃える:
+ * - `/` (start) → [GlobalTimeline]
+ * - `/posts/:id` → [PostDetail]
+ * - `/users/:sub` → [Profile] / [MyProfile]
+ * - `/users/:sub/{followers,following}` → [FollowList]
+ * - `/settings` / `/settings/profile` → [SettingsRoot] / [SettingsProfile]
+ * - `/admin/badges` / `/admin/users` → [AdminBadges] / [AdminUserBadges]
+ *
+ * 旧 `HomeTimeline` / `ProfileEdit` は削除（Home は frontend で撤去済み、
+ * ProfileEdit は SettingsProfile に統合）。
  */
 sealed interface FujuDestination {
     @Serializable data object Login : FujuDestination
 
     // --- Top-level tabs (shell の NavigationBar に表示) ---
 
-    /** Home timeline タブ。自分のフォロー中ユーザーの投稿一覧。 */
-    @Serializable data object HomeTimeline : FujuDestination
-
-    /** Global timeline タブ。公開投稿の全体一覧。 */
+    /** Global timeline タブ。公開投稿の全体一覧。start destination。 */
     @Serializable data object GlobalTimeline : FujuDestination
 
     /** 自分のプロフィールタブ。Profile(publicId=me) と意味的に同じだが route 型として分離する。 */
     @Serializable data object MyProfile : FujuDestination
 
-    /** 管理者バッジ一覧タブ。 */
+    /** 設定ハブ。`SettingsRoot` 配下に各セクション (`SettingsProfile` 等) を配置する。 */
+    @Serializable data object SettingsRoot : FujuDestination
+
+    /** 管理者バッジマスタータブ（`/admin/badges`）。isAdmin のみ表示。 */
     @Serializable data object AdminBadges : FujuDestination
 
     // --- 子画面 (shell 内のスタック遷移) ---
@@ -50,6 +61,13 @@ sealed interface FujuDestination {
         val followers: Boolean,
     ) : FujuDestination
 
-    /** 自プロフィール編集画面。自分のみ入れる想定。 */
-    @Serializable data object ProfileEdit : FujuDestination
+    /**
+     * 設定 > プロフィール編集（`/settings/profile`）。
+     * 旧 `ProfileEdit` を統合した先。`SettingsRoot` 経由で表示するため shell では
+     * 単独の destination としても受け、deeplink / navigate を維持する。
+     */
+    @Serializable data object SettingsProfile : FujuDestination
+
+    /** 管理者: ユーザーへのバッジ付与 / 剥奪（`/admin/users`）。isAdmin のみ表示。 */
+    @Serializable data object AdminUserBadges : FujuDestination
 }

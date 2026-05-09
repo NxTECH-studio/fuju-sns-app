@@ -18,8 +18,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * `TimelineScreen` の screenshot baseline。HomeTimelineScreen は ViewModel をラップした
- * 薄い Composable なので、その中身の presentational な `TimelineScreen` を直接描画する。
+ * `GlobalTimelineScreen` 配下の `TimelineScreen` の screenshot baseline。
+ * Home timeline は frontend で撤去済み。Global のみが残る一本立てタブ。
  *
  * カバレッジ:
  * - normal: 3 件の投稿が並ぶ通常状態
@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [SCREENSHOT_SDK])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class HomeTimelineScreenshotTest {
+class GlobalTimelineScreenshotTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -44,7 +44,7 @@ class HomeTimelineScreenshotTest {
         )
 
     @Test
-    fun homeTimeline_normal() {
+    fun globalTimeline_normal() {
         composeTestRule.setContent {
             ScreenshotScaffold {
                 TimelineScreen(
@@ -61,11 +61,11 @@ class HomeTimelineScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "$BASELINE_DIR/HomeTimeline_normal.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/GlobalTimeline_normal.png")
     }
 
     @Test
-    fun homeTimeline_empty() {
+    fun globalTimeline_empty() {
         composeTestRule.setContent {
             ScreenshotScaffold {
                 TimelineScreen(
@@ -82,11 +82,11 @@ class HomeTimelineScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "$BASELINE_DIR/HomeTimeline_empty.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/GlobalTimeline_empty.png")
     }
 
     @Test
-    fun homeTimeline_error() {
+    fun globalTimeline_error() {
         composeTestRule.setContent {
             ScreenshotScaffold {
                 TimelineScreen(
@@ -103,7 +103,7 @@ class HomeTimelineScreenshotTest {
         }
         composeTestRule
             .onRoot()
-            .captureRoboImage(filePath = "$BASELINE_DIR/HomeTimeline_error.png")
+            .captureRoboImage(filePath = "$BASELINE_DIR/GlobalTimeline_error.png")
     }
 }
 

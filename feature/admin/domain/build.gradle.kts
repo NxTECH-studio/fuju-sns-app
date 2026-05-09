@@ -15,8 +15,16 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:domain"))
             api(project(":core:error"))
+            // admin の user-badge 画面で `/v1/users` を listing するために profile:domain の
+            // ProfileRepository / UserListPage を直接参照する。
+            api(project(":feature:profile:domain"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.turbine)
         }
     }
 }

@@ -30,11 +30,12 @@ data class PostPage(
 
 /**
  * Timeline の種類。[TimelineRepository] のどのエンドポイントを叩くかを決める。
- * React 版の `TimelineKind` と同じ三値。
+ * React 版の `TimelineKind` と同じ二値。
+ *
+ * Home timeline はフロントエンドから撤去済み（`feat(timeline): drop home timeline`）で、
+ * 全ユーザー共通の Global と特定ユーザー単位の User の 2 種類のみ。
  */
 sealed interface TimelineKind {
-    data object Home : TimelineKind
-
     data object Global : TimelineKind
 
     data class User(
@@ -49,8 +50,6 @@ sealed interface TimelineKind {
  * 返せば良い。呼び出し側は [TimelineViewModel] が基本。
  */
 interface TimelineRepository {
-    suspend fun getHome(query: TimelineQuery): PostPage
-
     suspend fun getGlobal(query: TimelineQuery): PostPage
 
     suspend fun getUser(
@@ -71,7 +70,6 @@ interface TimelineRepository {
 
     suspend fun createPost(
         content: String,
-        imageIds: List<String>,
         parentPostId: String?,
     ): Post
 
